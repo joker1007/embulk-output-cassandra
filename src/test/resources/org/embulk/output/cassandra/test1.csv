@@ -1,4 +1,4 @@
-id:string,int_item:long,varchar_item:string,timestamp_item:timestamp
-A001,9,a,2018-07-01 10:00:00.000 UTC
-A002,0,b,2018-07-01 10:00:01.000 UTC
-A003,9,c,2018-07-01 10:00:02.000 UTC
+id:string,int_item:long,int32_item:long,smallint_item:long,tinyint_item:long,boolean_item:boolean,varchar_item:string,timestamp_item:timestamp
+A001,9,4294967297,2,0,true,a,2018-07-01 10:00:00.000 UTC
+A002,0,0,4,0,true,b,2018-07-01 10:00:01.000 UTC
+A003,9,0,8,1,false,c,2018-07-01 10:00:02.000 UTC

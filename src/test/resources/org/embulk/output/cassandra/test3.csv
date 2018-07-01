@@ -1,2 +1,2 @@
-decimal_item:long,date_item:string,time_item:string,list_item:json,map_item:json,set_item:json
-10,2018-07-01,10:00:00,"[""foo"", ""bar""]","{""key1"": 1, ""key2"": 2}","[1,2,3,3]"
+decimal_item:long,date_item:string,time_item:string,list_item:json,map_item:json,set_item:json,inet_item:string,tuple_item:json
+10,2018-07-01,10:00:00,"[""foo"", ""bar""]","{""key1"": 1, ""key2"": 2}","[1,2,3,3]",127.0.0.1,"[""foo"", 1.1]"

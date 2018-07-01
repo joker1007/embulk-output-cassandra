@@ -98,12 +98,7 @@ public class CassandraOutputPlugin
     {
         PluginTask task = config.loadConfig(PluginTask.class);
 
-        // retryable (idempotent) output:
-        // return resume(task.dump(), schema, taskCount, control);
-
-        // non-retryable (non-idempotent) output:
-        control.run(task.dump());
-        return Exec.newConfigDiff();
+        return resume(task.dump(), schema, taskCount, control);
     }
 
     @Override
@@ -111,7 +106,8 @@ public class CassandraOutputPlugin
             Schema schema, int taskCount,
             OutputPlugin.Control control)
     {
-        throw new UnsupportedOperationException("cassandra output plugin does not support resuming");
+        control.run(taskSource);
+        return Exec.newConfigDiff();
     }
 
     @Override
@@ -152,7 +148,7 @@ public class CassandraOutputPlugin
         ImmutableList.Builder<String> uuidColumnsBuilder = ImmutableList.builder();
         for (ColumnMetadata column : tableMetadata.getColumns()) {
             insert.value(column.getName(), QueryBuilder.bindMarker(column.getName()));
-            columnSettersBuilder.put(column.getName(), CassandraColumnSetterFactory.createColumnSetter(column));
+            columnSettersBuilder.put(column.getName(), CassandraColumnSetterFactory.createColumnSetter(column, cluster));
             switch (column.getType().getName()) {
                 case UUID:
                 case TIMEUUID:
@@ -208,6 +204,8 @@ public class CassandraOutputPlugin
         private final List<ColumnSetterVisitor> columnVisitors;
         private final PreparedStatement prepared;
         private final PluginTask task;
+        private long counter = 0;
+        private long nextLoggingCount = 1;
 
         public PluginPageOuput(
                 Cluster cluster,
@@ -250,6 +248,11 @@ public class CassandraOutputPlugin
                     }
                 }
                 session.execute(statement);
+                counter++;
+                if (counter >= nextLoggingCount) {
+                    logger.info("Inserted {} records", counter);
+                    nextLoggingCount = nextLoggingCount * 2;
+                }
             }
         }
 
@@ -275,7 +278,9 @@ public class CassandraOutputPlugin
         @Override
         public TaskReport commit()
         {
-            return null;
+            TaskReport report = Exec.newTaskReport();
+            report.set("inserted_record_count", counter);
+            return report;
         }
     }
 }

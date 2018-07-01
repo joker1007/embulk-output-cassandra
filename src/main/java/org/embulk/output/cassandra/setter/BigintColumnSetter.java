@@ -2,8 +2,6 @@ package org.embulk.output.cassandra.setter;
 
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ColumnMetadata;
-import org.embulk.spi.time.Timestamp;
-import org.msgpack.value.Value;
 
 public class BigintColumnSetter extends CassandraColumnSetter
 {
@@ -40,11 +38,5 @@ public class BigintColumnSetter extends CassandraColumnSetter
     public void setStringValue(String value, BoundStatement statement)
     {
         statement.setLong(cassandraColumn.getName(), Long.parseLong(value));
-    }
-
-    @Override
-    public void setTimestampValue(Timestamp value, BoundStatement statement)
-    {
-        statement.setLong(cassandraColumn.getName(), value.getEpochSecond());
     }
 }

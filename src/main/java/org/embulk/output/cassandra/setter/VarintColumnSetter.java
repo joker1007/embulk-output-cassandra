@@ -2,12 +2,13 @@ package org.embulk.output.cassandra.setter;
 
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ColumnMetadata;
-import org.embulk.spi.time.Timestamp;
 
-public class DoubleColumnSetter extends CassandraColumnSetter
+import java.math.BigInteger;
+
+public class VarintColumnSetter extends CassandraColumnSetter
 {
 
-    public DoubleColumnSetter(ColumnMetadata cassandraColumn)
+    public VarintColumnSetter(ColumnMetadata cassandraColumn)
     {
         super(cassandraColumn);
     }
@@ -16,28 +17,28 @@ public class DoubleColumnSetter extends CassandraColumnSetter
     public void setBooleanValue(Boolean value, BoundStatement statement)
     {
         if (value) {
-            statement.setDouble(cassandraColumn.getName(), 1);
+            statement.setVarint(cassandraColumn.getName(), BigInteger.ONE);
         }
         else {
-            statement.setDouble(cassandraColumn.getName(), 0);
+            statement.setVarint(cassandraColumn.getName(), BigInteger.ZERO);
         }
     }
 
     @Override
     public void setLongValue(Long value, BoundStatement statement)
     {
-        statement.setDouble(cassandraColumn.getName(), value.doubleValue());
+        statement.setVarint(cassandraColumn.getName(), BigInteger.valueOf(value));
     }
 
     @Override
     public void setDoubleValue(Double value, BoundStatement statement)
     {
-        statement.setDouble(cassandraColumn.getName(), value);
+        statement.setVarint(cassandraColumn.getName(), BigInteger.valueOf(value.longValue()));
     }
 
     @Override
     public void setStringValue(String value, BoundStatement statement)
     {
-        statement.setDouble(cassandraColumn.getName(), Double.parseDouble(value));
+        statement.setVarint(cassandraColumn.getName(), new BigInteger(value));
     }
 }

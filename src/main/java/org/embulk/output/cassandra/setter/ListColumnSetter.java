@@ -2,11 +2,7 @@ package org.embulk.output.cassandra.setter;
 
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ColumnMetadata;
-import com.google.common.collect.Lists;
-import org.embulk.spi.time.Timestamp;
 import org.msgpack.value.Value;
-
-import java.util.List;
 
 public class ListColumnSetter extends CassandraColumnSetter
 {

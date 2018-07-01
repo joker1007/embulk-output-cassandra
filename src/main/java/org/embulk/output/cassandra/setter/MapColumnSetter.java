@@ -2,11 +2,7 @@ package org.embulk.output.cassandra.setter;
 
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ColumnMetadata;
-import com.google.common.collect.Maps;
 import org.msgpack.value.Value;
-
-import java.util.Map;
-import java.util.stream.Collectors;
 
 public class MapColumnSetter extends CassandraColumnSetter
 {

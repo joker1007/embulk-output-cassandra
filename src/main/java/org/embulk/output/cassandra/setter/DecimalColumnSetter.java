@@ -2,7 +2,6 @@ package org.embulk.output.cassandra.setter;
 
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ColumnMetadata;
-import org.embulk.spi.time.Timestamp;
 
 import java.math.BigDecimal;
 
@@ -41,11 +40,5 @@ public class DecimalColumnSetter extends CassandraColumnSetter
     public void setStringValue(String value, BoundStatement statement)
     {
         statement.setDecimal(cassandraColumn.getName(), new BigDecimal(value));
-    }
-
-    @Override
-    public void setTimestampValue(Timestamp value, BoundStatement statement)
-    {
-        statement.setDecimal(cassandraColumn.getName(), BigDecimal.valueOf(value.getEpochSecond()));
     }
 }
