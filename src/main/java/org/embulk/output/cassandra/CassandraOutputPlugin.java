@@ -3,13 +3,16 @@ package org.embulk.output.cassandra;
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnMetadata;
+import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SocketOptions;
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
+import com.datastax.driver.core.utils.UUIDs;
 import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.embulk.config.Config;
@@ -86,7 +89,7 @@ public class CassandraOutputPlugin
         public int getRequestTimeout();
     }
 
-    private final Logger logger = Exec.getLogger(getClass());
+    private final Logger logger = Exec.getLogger(CassandraOutputPlugin.class);
 
     @Override
     public ConfigDiff transaction(ConfigSource config,
@@ -127,9 +130,15 @@ public class CassandraOutputPlugin
 
         Session session = cluster.newSession();
 
-        TableMetadata tableMetadata = cluster.getMetadata()
-                .getKeyspace(task.getKeyspace())
-                .getTable(task.getTable());
+        KeyspaceMetadata keyspaceMetadata = cluster.getMetadata().getKeyspace(task.getKeyspace());
+        if (keyspaceMetadata == null) {
+            throw new RuntimeException("keyspace `" + task.getKeyspace() + "` is not found");
+        }
+
+        TableMetadata tableMetadata = keyspaceMetadata.getTable(task.getTable());
+        if (tableMetadata == null) {
+            throw new RuntimeException("table `" + task.getTable() + "` is not found");
+        }
 
         Insert insert = QueryBuilder.insertInto(task.getKeyspace(), task.getTable());
         if (task.getIfNotExists()) {
@@ -140,11 +149,18 @@ public class CassandraOutputPlugin
         }
 
         ImmutableMap.Builder<String, CassandraColumnSetter> columnSettersBuilder = ImmutableMap.builder();
+        ImmutableList.Builder<String> uuidColumnsBuilder = ImmutableList.builder();
         for (ColumnMetadata column : tableMetadata.getColumns()) {
             insert.value(column.getName(), QueryBuilder.bindMarker(column.getName()));
             columnSettersBuilder.put(column.getName(), CassandraColumnSetterFactory.createColumnSetter(column));
+            switch (column.getType().getName()) {
+                case UUID:
+                case TIMEUUID:
+                    uuidColumnsBuilder.add(column.getName());
+            }
         }
         Map<String, CassandraColumnSetter> columnSetters = columnSettersBuilder.build();
+        List<String> uuidColumns = uuidColumnsBuilder.build();
         List<ColumnSetterVisitor> columnVisitors = Lists.transform(schema.getColumns(), (column) ->
                 new ColumnSetterVisitor(pageReader, columnSetters.get(column.getName())));
 
@@ -155,7 +171,7 @@ public class CassandraOutputPlugin
             prepared.setIdempotent(task.getIdempotent());
         }
 
-        return new PluginPageOuput(cluster, session, pageReader, tableMetadata, columnSetters, columnVisitors, prepared, task);
+        return new PluginPageOuput(cluster, session, pageReader, tableMetadata, uuidColumns, columnSetters, columnVisitors, prepared, task);
     }
 
     private Cluster getCluster(PluginTask task)
@@ -187,6 +203,7 @@ public class CassandraOutputPlugin
         private final Session session;
         private final PageReader pageReader;
         private final TableMetadata tableMetadata;
+        private final List<String> uuidColumns;
         private final Map<String, CassandraColumnSetter> columnSetters;
         private final List<ColumnSetterVisitor> columnVisitors;
         private final PreparedStatement prepared;
@@ -197,6 +214,7 @@ public class CassandraOutputPlugin
                 Session session,
                 PageReader pageReader,
                 TableMetadata tableMetadata,
+                List<String> uuidColumns,
                 Map<String, CassandraColumnSetter> columnSetters,
                 List<ColumnSetterVisitor> columnVisitors,
                 PreparedStatement prepared,
@@ -206,6 +224,7 @@ public class CassandraOutputPlugin
             this.session = session;
             this.pageReader = pageReader;
             this.tableMetadata = tableMetadata;
+            this.uuidColumns = uuidColumns;
             this.columnSetters = columnSetters;
             this.columnVisitors = columnVisitors;
             this.prepared = prepared;
@@ -216,14 +235,22 @@ public class CassandraOutputPlugin
         public void add(Page page)
         {
             pageReader.setPage(page);
-            BoundStatement statemtnt = prepared.bind();
+            while (pageReader.nextRecord()) {
+                BoundStatement statement = prepared.bind();
 
-            for (int i = 0; i < pageReader.getSchema().getColumns().size(); i++) {
-                ColumnSetterVisitor visitor = columnVisitors.get(i);
-                visitor.setStatement(statemtnt);
-                pageReader.getSchema().getColumn(i).visit(visitor);
+                for (String uuidColumn : uuidColumns) {
+                    columnSetters.get(uuidColumn).setNullValue(statement);
+                }
+
+                for (int i = 0; i < pageReader.getSchema().getColumns().size(); i++) {
+                    ColumnSetterVisitor visitor = columnVisitors.get(i);
+                    visitor.setStatement(statement);
+                    if (visitor.hasSetter()) {
+                        pageReader.getSchema().getColumn(i).visit(visitor);
+                    }
+                }
+                session.execute(statement);
             }
-            session.execute(statemtnt);
         }
 
         @Override

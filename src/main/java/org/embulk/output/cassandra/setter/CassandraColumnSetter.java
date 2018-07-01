@@ -14,12 +14,35 @@ public abstract class CassandraColumnSetter
         this.cassandraColumn = cassandraColumn;
     }
 
-    public abstract void setBooleanValue(Boolean value, BoundStatement statement);
-    public abstract void setLongValue(Long value, BoundStatement statement);
-    public abstract void setDoubleValue(Double value, BoundStatement statement);
-    public abstract void setStringValue(String value, BoundStatement statement);
-    public abstract void setTimestampValue(Timestamp value, BoundStatement statement);
-    public abstract void setJsonValue(Value value, BoundStatement statement);
+    public void setBooleanValue(Boolean value, BoundStatement statement)
+    {
+        throw new RuntimeException("Unsupported type conversion: " + value.getClass().getName() + " -> " + cassandraColumn.getType().getName());
+    };
+
+    public void setLongValue(Long value, BoundStatement statement)
+    {
+        throw new RuntimeException("Unsupported type conversion: " + value.getClass().getName() + " -> " + cassandraColumn.getType().getName());
+    };
+
+    public void setDoubleValue(Double value, BoundStatement statement)
+    {
+        throw new RuntimeException("Unsupported type conversion: " + value.getClass().getName() + " -> " + cassandraColumn.getType().getName());
+    };
+
+    public void setStringValue(String value, BoundStatement statement)
+    {
+        throw new RuntimeException("Unsupported type conversion: " + value.getClass().getName() + " -> " + cassandraColumn.getType().getName());
+    };
+
+    public void setTimestampValue(Timestamp value, BoundStatement statement)
+    {
+        throw new RuntimeException("Unsupported type conversion: " + value.getClass().getName() + " -> " + cassandraColumn.getType().getName());
+    };
+
+    public void setJsonValue(Value value, BoundStatement statement)
+    {
+        throw new RuntimeException("Unsupported type conversion: " + value.getClass().getName() + " -> " + cassandraColumn.getType().getName());
+    };
 
     public void setNullValue(BoundStatement statement)
     {

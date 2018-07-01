@@ -1,0 +1,2 @@
+int_item:long,varchar_item:string,timestamp_item:timestamp
+9,a,2018-07-01 10:00:00.000 UTC

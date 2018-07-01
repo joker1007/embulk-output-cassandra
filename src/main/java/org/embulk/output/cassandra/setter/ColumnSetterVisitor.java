@@ -18,6 +18,11 @@ public class ColumnSetterVisitor implements ColumnVisitor
         this.setter = setter;
     }
 
+    public boolean hasSetter()
+    {
+        return this.setter != null;
+    }
+
     public void setStatement(BoundStatement statement)
     {
         this.statement = statement;
