@@ -26,7 +26,7 @@ public class TupleColumnSetter extends CassandraColumnSetter
             throw new RuntimeException(value.toJson() + " is not array value");
         }
 
-        TupleType tupleType = cluster.getMetadata().newTupleType(((TupleType)cassandraColumn.getType()).getComponentTypes());
+        TupleType tupleType = cluster.getMetadata().newTupleType(((TupleType) cassandraColumn.getType()).getComponentTypes());
         List<Object> list = ValueConverter.convertList(value.asArrayValue().list());
         TupleValue tupleValue = tupleType.newValue(list.toArray());
         statement.setTupleValue(cassandraColumn.getName(), tupleValue);

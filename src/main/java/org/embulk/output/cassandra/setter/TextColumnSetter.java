@@ -7,7 +7,6 @@ import org.msgpack.value.Value;
 
 public class TextColumnSetter extends CassandraColumnSetter
 {
-
     public TextColumnSetter(ColumnMetadata cassandraColumn)
     {
         super(cassandraColumn);

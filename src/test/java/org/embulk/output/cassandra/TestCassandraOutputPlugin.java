@@ -105,7 +105,8 @@ public class TestCassandraOutputPlugin
     }
 
     @Test
-    public void testBasic() throws IOException {
+    public void testBasic() throws IOException
+    {
         Path input = getInputPath("test1.csv");
         ConfigSource config = loadYamlResource("test_basic.yaml");
         config.set("hosts", getCassandraHostAsList());
@@ -139,7 +140,8 @@ public class TestCassandraOutputPlugin
     }
 
     @Test
-    public void testBasicWithTtl() throws IOException {
+    public void testBasicWithTtl() throws IOException
+    {
         Path input = getInputPath("test1.csv");
         ConfigSource config = loadYamlResource("test_basic.yaml");
         config.set("hosts", getCassandraHostAsList());
@@ -164,7 +166,8 @@ public class TestCassandraOutputPlugin
     }
 
     @Test
-    public void testBasicWithIfNotExists() throws IOException {
+    public void testBasicWithIfNotExists() throws IOException
+    {
         Path input = getInputPath("test1.csv");
         ConfigSource config = loadYamlResource("test_basic.yaml");
         config.set("hosts", getCassandraHostAsList());
@@ -189,7 +192,8 @@ public class TestCassandraOutputPlugin
     }
 
     @Test
-    public void testUuid() throws IOException {
+    public void testUuid() throws IOException
+    {
         Path input = getInputPath("test2.csv");
         ConfigSource config = loadYamlResource("test_uuid.yaml");
         config.set("hosts", getCassandraHostAsList());
@@ -204,7 +208,8 @@ public class TestCassandraOutputPlugin
     }
 
     @Test
-    public void testComplex() throws IOException {
+    public void testComplex() throws IOException
+    {
         Path input = getInputPath("test3.csv");
         ConfigSource config = loadYamlResource("test_complex.yaml");
         config.set("hosts", getCassandraHostAsList());

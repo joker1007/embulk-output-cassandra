@@ -8,7 +8,6 @@ import java.util.LinkedHashSet;
 
 public class SetColumnSetter extends CassandraColumnSetter
 {
-
     public SetColumnSetter(ColumnMetadata cassandraColumn)
     {
         super(cassandraColumn);

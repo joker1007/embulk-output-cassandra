@@ -7,7 +7,6 @@ import java.math.BigDecimal;
 
 public class DecimalColumnSetter extends CassandraColumnSetter
 {
-
     public DecimalColumnSetter(ColumnMetadata cassandraColumn)
     {
         super(cassandraColumn);

@@ -5,7 +5,6 @@ import com.datastax.driver.core.ColumnMetadata;
 
 public class SmallintColumnSetter extends CassandraColumnSetter
 {
-
     public SmallintColumnSetter(ColumnMetadata cassandraColumn)
     {
         super(cassandraColumn);

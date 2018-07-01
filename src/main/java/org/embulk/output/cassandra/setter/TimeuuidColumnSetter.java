@@ -6,7 +6,6 @@ import com.datastax.driver.core.utils.UUIDs;
 
 public class TimeuuidColumnSetter extends CassandraColumnSetter
 {
-
     public TimeuuidColumnSetter(ColumnMetadata cassandraColumn)
     {
         super(cassandraColumn);

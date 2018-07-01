@@ -8,7 +8,6 @@ import java.time.LocalDate;
 
 public class DateColumnSetter extends CassandraColumnSetter
 {
-
     public DateColumnSetter(ColumnMetadata cassandraColumn)
     {
         super(cassandraColumn);

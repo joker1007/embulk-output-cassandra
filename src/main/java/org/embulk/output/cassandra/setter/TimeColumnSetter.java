@@ -11,7 +11,6 @@ import java.time.ZonedDateTime;
 
 public class TimeColumnSetter extends CassandraColumnSetter
 {
-
     public TimeColumnSetter(ColumnMetadata cassandraColumn)
     {
         super(cassandraColumn);

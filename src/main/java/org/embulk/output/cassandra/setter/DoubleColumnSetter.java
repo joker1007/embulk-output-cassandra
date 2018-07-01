@@ -2,11 +2,9 @@ package org.embulk.output.cassandra.setter;
 
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ColumnMetadata;
-import org.embulk.spi.time.Timestamp;
 
 public class DoubleColumnSetter extends CassandraColumnSetter
 {
-
     public DoubleColumnSetter(ColumnMetadata cassandraColumn)
     {
         super(cassandraColumn);

@@ -22,7 +22,6 @@ dependencies {
     compile  "org.embulk:embulk-core:0.9.7"
     compile  "com.datastax.cassandra:cassandra-driver-core:3.5.0"
     provided "org.embulk:embulk-core:0.9.7"
-    // compile "YOUR_JAR_DEPENDENCY_GROUP:YOUR_JAR_DEPENDENCY_MODULE:YOUR_JAR_DEPENDENCY_VERSION"
     testCompile "junit:junit:4.+"
     testCompile  "org.embulk:embulk-test:0.9.7"
     testCompile  "org.embulk:embulk-standards:0.9.7"

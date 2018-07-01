@@ -6,7 +6,6 @@ import org.msgpack.value.Value;
 
 public class MapColumnSetter extends CassandraColumnSetter
 {
-
     public MapColumnSetter(ColumnMetadata cassandraColumn)
     {
         super(cassandraColumn);

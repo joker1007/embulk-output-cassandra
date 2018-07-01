@@ -8,7 +8,6 @@ import java.net.UnknownHostException;
 
 public class InetColumnSetter extends CassandraColumnSetter
 {
-
     public InetColumnSetter(ColumnMetadata cassandraColumn)
     {
         super(cassandraColumn);
@@ -19,7 +18,8 @@ public class InetColumnSetter extends CassandraColumnSetter
     {
         try {
             statement.setInet(cassandraColumn.getName(), InetAddress.getByName(value));
-        } catch (UnknownHostException e) {
+        }
+        catch (UnknownHostException e) {
             throw new RuntimeException(e);
         }
     }

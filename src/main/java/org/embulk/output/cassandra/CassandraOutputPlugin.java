@@ -10,7 +10,6 @@ import com.datastax.driver.core.SocketOptions;
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
-import com.datastax.driver.core.utils.UUIDs;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -259,7 +258,6 @@ public class CassandraOutputPlugin
         @Override
         public void finish()
         {
-
         }
 
         @Override
@@ -272,7 +270,6 @@ public class CassandraOutputPlugin
         @Override
         public void abort()
         {
-
         }
 
         @Override

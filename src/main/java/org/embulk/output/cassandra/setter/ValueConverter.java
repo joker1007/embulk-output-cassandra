@@ -7,7 +7,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class ValueConverter {
+public class ValueConverter
+{
+    private ValueConverter()
+    {
+    }
+
     public static List<Object> convertList(List<Value> list)
     {
         return Lists.transform(list, (val) -> convertValueToPlain(val));
@@ -17,8 +22,9 @@ public class ValueConverter {
     {
         return map.entrySet().stream().collect(Collectors.toMap(
                 (Map.Entry<Value, Value> entry) -> {
-                    if (!entry.getKey().isStringValue())
+                    if (!entry.getKey().isStringValue()) {
                         throw new RuntimeException("map key is");
+                    }
                     return entry.getKey().asStringValue().toString();
                 },
                 (Map.Entry<Value, Value> entry) -> {
@@ -30,20 +36,27 @@ public class ValueConverter {
 
     private static Object convertValueToPlain(Value val)
     {
-        if (val.isNilValue())
+        if (val.isNilValue()) {
             return null;
-        if (val.isStringValue())
+        }
+        if (val.isStringValue()) {
             return val.asStringValue().toString();
-        if (val.isBooleanValue())
+        }
+        if (val.isBooleanValue()) {
             return val.asBooleanValue().getBoolean();
-        if (val.isIntegerValue())
+        }
+        if (val.isIntegerValue()) {
             return val.asIntegerValue().asLong();
-        if (val.isFloatValue())
+        }
+        if (val.isFloatValue()) {
             return val.asFloatValue().toDouble();
-        if (val.isArrayValue())
+        }
+        if (val.isArrayValue()) {
             return convertList(val.asArrayValue().list());
-        if (val.isMapValue())
+        }
+        if (val.isMapValue()) {
             return convertMap(val.asMapValue().map());
+        }
 
         return null;
     }

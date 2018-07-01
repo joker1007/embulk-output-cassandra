@@ -7,7 +7,6 @@ import java.math.BigInteger;
 
 public class VarintColumnSetter extends CassandraColumnSetter
 {
-
     public VarintColumnSetter(ColumnMetadata cassandraColumn)
     {
         super(cassandraColumn);

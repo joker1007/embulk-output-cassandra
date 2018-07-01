@@ -5,7 +5,6 @@ import com.datastax.driver.core.ColumnMetadata;
 
 public class BooleanColumnSetter extends CassandraColumnSetter
 {
-
     public BooleanColumnSetter(ColumnMetadata cassandraColumn)
     {
         super(cassandraColumn);
