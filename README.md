@@ -6,8 +6,8 @@ Apache Cassandra output plugin for Embulk.
 
 * **Plugin type**: output
 * **Load all or nothing**: no
-* **Resume supported**: no
-* **Cleanup supported**: yes
+* **Resume supported**: yes
+* **Cleanup supported**: no
 
 ## Configuration
 
