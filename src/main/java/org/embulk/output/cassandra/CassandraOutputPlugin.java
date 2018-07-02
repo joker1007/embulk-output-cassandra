@@ -10,6 +10,7 @@ import com.datastax.driver.core.SocketOptions;
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -17,6 +18,7 @@ import com.google.common.collect.Lists;
 import org.embulk.config.Config;
 import org.embulk.config.ConfigDefault;
 import org.embulk.config.ConfigDiff;
+import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
 import org.embulk.config.Task;
 import org.embulk.config.TaskReport;
@@ -34,6 +36,7 @@ import org.slf4j.Logger;
 
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class CassandraOutputPlugin
@@ -86,6 +89,34 @@ public class CassandraOutputPlugin
         @Config("request_timeout")
         @ConfigDefault("12000")
         public int getRequestTimeout();
+
+        @Config("assignment_mode")
+        @ConfigDefault("\"default_unset\"")
+        public AssignmentMode getAssignmentMode();
+    }
+
+    public enum AssignmentMode {
+        DEFAULT_NULL,
+        DEFAULT_UNSET;
+
+        @JsonValue
+        @Override
+        public String toString()
+        {
+            return name().toLowerCase(Locale.ENGLISH);
+        }
+
+        public static AssignmentMode fromString(String value)
+        {
+            switch (value) {
+                case "default_null":
+                    return DEFAULT_NULL;
+                case "default_unset":
+                    return DEFAULT_UNSET;
+                default:
+                    throw new ConfigException(String.format("Unknown mode '%s'. Supported modes are default_null, default_unset", value));
+            }
+        }
     }
 
     private final Logger logger = Exec.getLogger(CassandraOutputPlugin.class);
@@ -234,6 +265,12 @@ public class CassandraOutputPlugin
             pageReader.setPage(page);
             while (pageReader.nextRecord()) {
                 BoundStatement statement = prepared.bind();
+
+                if (task.getAssignmentMode() == AssignmentMode.DEFAULT_NULL) {
+                    for (CassandraColumnSetter columnSetters : columnSetters.values()) {
+                        columnSetters.setNullValue(statement);
+                    }
+                }
 
                 for (String uuidColumn : uuidColumns) {
                     columnSetters.get(uuidColumn).setNullValue(statement);

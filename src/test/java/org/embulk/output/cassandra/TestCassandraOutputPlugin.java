@@ -31,7 +31,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class TestCassandraOutputPlugin
 {
@@ -112,6 +116,47 @@ public class TestCassandraOutputPlugin
         config.set("hosts", getCassandraHostAsList());
 
         assertEquals(0, session.execute("SELECT * FROM embulk_test.test_basic").all().size());
+        session.execute("INSERT INTO embulk_test.test_basic (id, double_item) VALUES ('A001', 1.0)");
+
+        TestingEmbulk.RunResult result = embulk.runOutput(config, input);
+        assertEquals(3, result.getOutputTaskReports().get(0).get(Long.class, "inserted_record_count").longValue());
+
+        Row row1 = session.execute("SELECT * FROM embulk_test.test_basic WHERE id = 'A001'").one();
+        Row row2 = session.execute("SELECT * FROM embulk_test.test_basic WHERE id = 'A002'").one();
+        Row row3 = session.execute("SELECT * FROM embulk_test.test_basic WHERE id = 'A003'").one();
+        assertEquals("A001", row1.getString("id"));
+        assertTrue(0.9 < row1.getDouble("double_item") && 1.1 > row1.getDouble("double_item"));
+        assertEquals(9, row1.getLong("int_item"));
+        assertEquals(1, row1.getInt("int32_item"));
+        assertEquals(2, row1.getShort("smallint_item"));
+        assertTrue(row1.getBool("boolean_item"));
+        assertEquals(createDate(2018, 7, 1, 10, 0, 0, 0), row1.getTimestamp("timestamp_item"));
+        assertEquals("A002", row2.getString("id"));
+        assertEquals(0, row2.getLong("int_item"));
+        assertEquals(0, row2.getInt("int32_item"));
+        assertTrue(0.0 == row2.getDouble("double_item"));
+        assertEquals(4, row2.getShort("smallint_item"));
+        assertTrue(row2.getBool("boolean_item"));
+        assertEquals(createDate(2018, 7, 1, 10, 0, 1, 0), row2.getTimestamp("timestamp_item"));
+        assertEquals("A003", row3.getString("id"));
+        assertEquals(9, row3.getLong("int_item"));
+        assertEquals(0, row3.getInt("int32_item"));
+        assertTrue(0.0 == row3.getDouble("double_item"));
+        assertEquals(8, row3.getShort("smallint_item"));
+        assertFalse(row3.getBool("boolean_item"));
+        assertEquals(createDate(2018, 7, 1, 10, 0, 2, 0), row3.getTimestamp("timestamp_item"));
+    }
+
+    @Test
+    public void testBasicWithAssignmentModeNull() throws IOException
+    {
+        Path input = getInputPath("test1.csv");
+        ConfigSource config = loadYamlResource("test_basic.yaml");
+        config.set("hosts", getCassandraHostAsList());
+        config.set("assignment_mode", "default_null");
+
+        assertEquals(0, session.execute("SELECT * FROM embulk_test.test_basic").all().size());
+        session.execute("INSERT INTO embulk_test.test_basic (id, double_item) VALUES ('A001', 1.0)");
 
         TestingEmbulk.RunResult result = embulk.runOutput(config, input);
         assertEquals(3, result.getOutputTaskReports().get(0).get(Long.class, "inserted_record_count").longValue());
@@ -121,6 +166,7 @@ public class TestCassandraOutputPlugin
         Row row3 = session.execute("SELECT * FROM embulk_test.test_basic WHERE id = 'A003'").one();
         assertEquals("A001", row1.getString("id"));
         assertEquals(9, row1.getLong("int_item"));
+        assertTrue(0.0 == row1.getDouble("double_item"));
         assertEquals(1, row1.getInt("int32_item"));
         assertEquals(2, row1.getShort("smallint_item"));
         assertTrue(row1.getBool("boolean_item"));
