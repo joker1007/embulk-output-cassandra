@@ -20,7 +20,16 @@ targetCompatibility = 1.8
 
 dependencies {
     compile  "org.embulk:embulk-core:0.9.7"
-    compile  "com.datastax.cassandra:cassandra-driver-core:3.5.0"
+    compile("com.datastax.cassandra:cassandra-driver-core:3.5.0") {
+        exclude module: 'netty-buffer'
+        exclude module: 'netty-codec'
+        exclude module: 'netty-common'
+        exclude module: 'netty-handler'
+        exclude module: 'netty-transport'
+    }
+    compile  "io.netty:netty-codec:4.0.44.Final"
+    compile  "io.netty:netty-handler:4.0.44.Final"
+    compile  "io.netty:netty-transport:4.0.44.Final"
     provided "org.embulk:embulk-core:0.9.7"
     testCompile "junit:junit:4.+"
     testCompile  "org.embulk:embulk-test:0.9.7"

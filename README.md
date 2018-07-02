@@ -9,6 +9,12 @@ Apache Cassandra output plugin for Embulk.
 * **Resume supported**: yes
 * **Cleanup supported**: no
 
+## Caution
+In current, version of netty components conflicts to one that is used by embulk-core.
+This probrem is very severe.
+I tested this plugin on embulk-0.9.7.
+But future embulk version may break this plugin.
+
 ## Configuration
 
 - **hosts**: list of seed hosts (list<string>, required)
