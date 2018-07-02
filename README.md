@@ -45,6 +45,9 @@ But future embulk version may break this plugin.
 | varint                      | string, boolean(as 0 or 1), long, double       |                                                                         |
 | UDT                         | unsupported                                    |                                                                         |
 
+## Insert Behavior
+If embulk record does not have a column, it is treated as `null`.
+If same key record already exists, the column is overwrited by `null`.
 
 ## Configuration
 
