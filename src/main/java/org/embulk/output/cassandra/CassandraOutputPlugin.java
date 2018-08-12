@@ -89,10 +89,6 @@ public class CassandraOutputPlugin
         @Config("request_timeout")
         @ConfigDefault("12000")
         public int getRequestTimeout();
-
-        @Config("counter_columnName")
-        @ConfigDefault("null")
-        public Optional<String> getCounterColumnName();
     }
 
     private final Logger logger = Exec.getLogger(CassandraOutputPlugin.class);
