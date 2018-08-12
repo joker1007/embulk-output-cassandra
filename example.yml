@@ -1,0 +1,23 @@
+in:
+  type: file
+  path_prefix: ./src/test/resources/org/embulk/output/cassandra/test1.csv
+  parser:
+    type: csv
+    skip_header_lines: 1
+    columns:
+      - {name: id, type: string}
+      - {name: int_item, type: long}
+      - {name: int32_item, type: long}
+      - {name: smallint_item, type: long}
+      - {name: tinyint_item, type: long}
+      - {name: boolean_item, type: boolean}
+      - {name: varchar_item, type: string}
+      - {name: timestamp_item, type: timestamp}
+
+out:
+  type: cassandra
+  hosts:
+    - 127.0.0.1
+  keyspace: embulk_test
+  table: test_basic
+  idempotent: true
