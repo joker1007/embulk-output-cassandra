@@ -49,6 +49,15 @@ But future embulk version may break this plugin.
 If embulk record does not have a column, it is treated as `unset`.
 If same key record already exists, the column is not touched.
 
+### Counter table
+This plugin supports counter table.
+
+But counter table supports only increment/decrement update.
+
+Because of it, This plugin uses input value as increment value;
+
+For example, If input data = {id: 1, count: 5}, Executed Statement is `UPDATE tablename SET count = count + 5 WHERE id = 1`
+
 ## Configuration
 
 - **hosts**: list of seed hosts (list<string>, required)

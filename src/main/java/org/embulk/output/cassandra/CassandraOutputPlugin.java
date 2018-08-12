@@ -3,13 +3,16 @@ package org.embulk.output.cassandra;
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnMetadata;
+import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SocketOptions;
 import com.datastax.driver.core.TableMetadata;
+import com.datastax.driver.core.querybuilder.BuiltStatement;
 import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
+import com.datastax.driver.core.querybuilder.Update;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -86,6 +89,10 @@ public class CassandraOutputPlugin
         @Config("request_timeout")
         @ConfigDefault("12000")
         public int getRequestTimeout();
+
+        @Config("counter_columnName")
+        @ConfigDefault("null")
+        public Optional<String> getCounterColumnName();
     }
 
     private final Logger logger = Exec.getLogger(CassandraOutputPlugin.class);
@@ -135,18 +142,42 @@ public class CassandraOutputPlugin
             throw new RuntimeException("table `" + task.getTable() + "` is not found");
         }
 
-        Insert insert = QueryBuilder.insertInto(task.getKeyspace(), task.getTable());
-        if (task.getIfNotExists()) {
-            insert.ifNotExists();
+        List<ColumnMetadata> columns = tableMetadata.getColumns();
+        boolean isCounterTable = columns.stream().anyMatch(col -> col.getType().getName() == DataType.Name.COUNTER);
+
+        BuiltStatement query;
+        if (isCounterTable) {
+            Update update = QueryBuilder.update(task.getKeyspace(), task.getTable());
+            if (task.getTtl().isPresent()) {
+                update.using(QueryBuilder.ttl(task.getTtl().get()));
+            }
+            for (ColumnMetadata column : tableMetadata.getColumns()) {
+                if (column.getType().getName() == DataType.Name.COUNTER) {
+                    update.with(QueryBuilder.incr(column.getName(), QueryBuilder.bindMarker(column.getName())));
+                }
+                else{
+                    update.where(QueryBuilder.eq(column.getName(), QueryBuilder.bindMarker(column.getName())));
+                }
+            }
+            query = update;
         }
-        if (task.getTtl().isPresent()) {
-            insert.using(QueryBuilder.ttl(task.getTtl().get()));
+        else {
+            Insert insert = QueryBuilder.insertInto(task.getKeyspace(), task.getTable());
+            if (task.getIfNotExists()) {
+                insert.ifNotExists();
+            }
+            if (task.getTtl().isPresent()) {
+                insert.using(QueryBuilder.ttl(task.getTtl().get()));
+            }
+            for (ColumnMetadata column : tableMetadata.getColumns()) {
+                insert.value(column.getName(), QueryBuilder.bindMarker(column.getName()));
+            }
+            query = insert;
         }
 
         ImmutableMap.Builder<String, CassandraColumnSetter> columnSettersBuilder = ImmutableMap.builder();
         ImmutableList.Builder<String> uuidColumnsBuilder = ImmutableList.builder();
         for (ColumnMetadata column : tableMetadata.getColumns()) {
-            insert.value(column.getName(), QueryBuilder.bindMarker(column.getName()));
             columnSettersBuilder.put(column.getName(), CassandraColumnSetterFactory.createColumnSetter(column, cluster));
             switch (column.getType().getName()) {
                 case UUID:
@@ -159,9 +190,9 @@ public class CassandraOutputPlugin
         List<ColumnSetterVisitor> columnVisitors = Lists.transform(schema.getColumns(), (column) ->
                 new ColumnSetterVisitor(pageReader, columnSetters.get(column.getName())));
 
-        logger.info("Insert Query: {}", insert.getQueryString());
+        logger.info("Insert Query: {}", query.getQueryString());
 
-        PreparedStatement prepared = session.prepare(insert);
+        PreparedStatement prepared = session.prepare(query);
         if (task.getIdempotent()) {
             prepared.setIdempotent(task.getIdempotent());
         }

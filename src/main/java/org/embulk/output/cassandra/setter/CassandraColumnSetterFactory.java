@@ -19,6 +19,7 @@ public class CassandraColumnSetterFactory
             case BOOLEAN:
                 return new BooleanColumnSetter(cassandraColumn);
             case BIGINT:
+            case COUNTER:
                 return new BigintColumnSetter(cassandraColumn);
             case INT:
                 return new IntColumnSetter(cassandraColumn);

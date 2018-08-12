@@ -1,0 +1,3 @@
+type: cassandra
+keyspace: embulk_test
+table: "test_counter"
