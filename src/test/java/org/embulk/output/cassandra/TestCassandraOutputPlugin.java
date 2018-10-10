@@ -3,7 +3,6 @@ package org.embulk.output.cassandra;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.LocalDate;
-import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.TupleType;
@@ -33,7 +32,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 public class TestCassandraOutputPlugin
 {
@@ -247,6 +251,56 @@ public class TestCassandraOutputPlugin
         assertEquals(createDate(2018, 7, 1, 10, 0, 0, 0), row1.getTimestamp("timestamp_item"));
         assertNotNull(row1.getUUID("timeuuid_item"));
         assertTrue(UUIDs.unixTimestamp(row1.getUUID("timeuuid_item")) < ZonedDateTime.now().toInstant().toEpochMilli());
+    }
+
+    @Test
+    public void testBasicWithUpdateMode() throws IOException
+    {
+        Path input = getInputPath("test1.csv");
+        ConfigSource config = loadYamlResource("test_basic.yaml");
+        config.set("hosts", getCassandraHostAsList());
+        config.set("mode", "update");
+
+        assertEquals(0, session.execute("SELECT * FROM embulk_test.test_basic").all().size());
+
+        embulk.runOutput(config, input);
+
+        Row row1 = session.execute("SELECT * FROM embulk_test.test_basic WHERE id = 'A001'").one();
+        Row row2 = session.execute("SELECT * FROM embulk_test.test_basic WHERE id = 'A002'").one();
+        Row row3 = session.execute("SELECT * FROM embulk_test.test_basic WHERE id = 'A003'").one();
+        assertEquals("A001", row1.getString("id"));
+        assertEquals(9, row1.getLong("int_item"));
+        assertEquals(createDate(2018, 7, 1, 10, 0, 0, 0), row1.getTimestamp("timestamp_item"));
+        assertEquals("A002", row2.getString("id"));
+        assertEquals(0, row2.getLong("int_item"));
+        assertEquals(createDate(2018, 7, 1, 10, 0, 1, 0), row2.getTimestamp("timestamp_item"));
+        assertEquals("A003", row3.getString("id"));
+        assertEquals(9, row3.getLong("int_item"));
+        assertEquals(createDate(2018, 7, 1, 10, 0, 2, 0), row3.getTimestamp("timestamp_item"));
+    }
+
+    @Test
+    public void testBasicWithIfExists() throws IOException
+    {
+        Path input = getInputPath("test1.csv");
+        ConfigSource config = loadYamlResource("test_basic.yaml");
+        config.set("hosts", getCassandraHostAsList());
+        config.set("mode", "update");
+        config.set("if_exists", true);
+
+        session.execute("INSERT INTO embulk_test.test_basic (id) VALUES ('A001')");
+        assertEquals(1, session.execute("SELECT * FROM embulk_test.test_basic").all().size());
+
+        embulk.runOutput(config, input);
+
+        Row row1 = session.execute("SELECT * FROM embulk_test.test_basic WHERE id = 'A001'").one();
+        Row row2 = session.execute("SELECT * FROM embulk_test.test_basic WHERE id = 'A002'").one();
+        Row row3 = session.execute("SELECT * FROM embulk_test.test_basic WHERE id = 'A003'").one();
+        assertEquals("A001", row1.getString("id"));
+        assertEquals(9, row1.getLong("int_item"));
+        assertEquals(createDate(2018, 7, 1, 10, 0, 0, 0), row1.getTimestamp("timestamp_item"));
+        assertNull(row2);
+        assertNull(row3);
     }
 
     @Test

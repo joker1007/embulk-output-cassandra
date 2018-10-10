@@ -13,6 +13,8 @@ import com.datastax.driver.core.querybuilder.BuiltStatement;
 import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.querybuilder.Update;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -20,6 +22,7 @@ import com.google.common.collect.Lists;
 import org.embulk.config.Config;
 import org.embulk.config.ConfigDefault;
 import org.embulk.config.ConfigDiff;
+import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
 import org.embulk.config.Task;
 import org.embulk.config.TaskReport;
@@ -27,6 +30,7 @@ import org.embulk.config.TaskSource;
 import org.embulk.output.cassandra.setter.CassandraColumnSetter;
 import org.embulk.output.cassandra.setter.CassandraColumnSetterFactory;
 import org.embulk.output.cassandra.setter.ColumnSetterVisitor;
+import org.embulk.spi.Column;
 import org.embulk.spi.Exec;
 import org.embulk.spi.OutputPlugin;
 import org.embulk.spi.Page;
@@ -37,7 +41,9 @@ import org.slf4j.Logger;
 
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class CassandraOutputPlugin
         implements OutputPlugin
@@ -46,7 +52,7 @@ public class CassandraOutputPlugin
             extends Task
     {
         @Config("hosts")
-        public List<String> gethosts();
+        public List<String> getHosts();
 
         @Config("port")
         @ConfigDefault("9042")
@@ -70,9 +76,17 @@ public class CassandraOutputPlugin
         @Config("table")
         public String getTable();
 
+        @Config("mode")
+        @ConfigDefault("\"insert\"")
+        public Mode getMode();
+
         @Config("if_not_exists")
         @ConfigDefault("false")
         public Boolean getIfNotExists();
+
+        @Config("if_exists")
+        @ConfigDefault("false")
+        public Boolean getIfExists();
 
         @Config("ttl")
         @ConfigDefault("null")
@@ -151,8 +165,32 @@ public class CassandraOutputPlugin
                 if (column.getType().getName() == DataType.Name.COUNTER) {
                     update.with(QueryBuilder.incr(column.getName(), QueryBuilder.bindMarker(column.getName())));
                 }
-                else{
+                else {
                     update.where(QueryBuilder.eq(column.getName(), QueryBuilder.bindMarker(column.getName())));
+                }
+            }
+            query = update;
+        }
+        else if (task.getMode() == Mode.UPDATE) {
+            Update update = QueryBuilder.update(task.getKeyspace(), task.getTable());
+            List<String> primaryKeys = tableMetadata.getPrimaryKey().stream().map(ColumnMetadata::getName).collect(Collectors.toList());
+            List<String> columnNames = tableMetadata.getColumns().stream().map(ColumnMetadata::getName).collect(Collectors.toList());
+
+            if (task.getIfExists()) {
+                update.where().ifExists();
+            }
+            if (task.getTtl().isPresent()) {
+                update.using(QueryBuilder.ttl(task.getTtl().get()));
+            }
+            for (String pkey : primaryKeys) {
+                update.where(QueryBuilder.eq(pkey, QueryBuilder.bindMarker(pkey)));
+            }
+            for (Column col : schema.getColumns()) {
+                if (primaryKeys.contains(col.getName())) {
+                    continue;
+                }
+                if (columnNames.contains(col.getName())) {
+                    update.with(QueryBuilder.set(col.getName(), QueryBuilder.bindMarker(col.getName())));
                 }
             }
             query = update;
@@ -186,7 +224,7 @@ public class CassandraOutputPlugin
         List<ColumnSetterVisitor> columnVisitors = Lists.transform(schema.getColumns(), (column) ->
                 new ColumnSetterVisitor(pageReader, columnSetters.get(column.getName())));
 
-        logger.info("Insert Query: {}", query.getQueryString());
+        logger.info("Query: {}", query.getQueryString());
 
         PreparedStatement prepared = session.prepare(query);
         if (task.getIdempotent()) {
@@ -199,7 +237,7 @@ public class CassandraOutputPlugin
     private Cluster getCluster(PluginTask task)
     {
         Cluster.Builder builder = Cluster.builder();
-        for (String host : task.gethosts()) {
+        for (String host : task.getHosts()) {
             builder.addContactPointsWithPorts(new InetSocketAddress(host, task.getPort()));
         }
 
@@ -305,6 +343,31 @@ public class CassandraOutputPlugin
             TaskReport report = Exec.newTaskReport();
             report.set("inserted_record_count", counter);
             return report;
+        }
+    }
+
+    public enum Mode {
+        INSERT,
+        UPDATE;
+
+        @JsonValue
+        @Override
+        public String toString()
+        {
+            return name().toLowerCase(Locale.ENGLISH);
+        }
+
+        @JsonCreator
+        public static Mode fromString(String value)
+        {
+            switch(value) {
+                case "insert":
+                    return INSERT;
+                case "update":
+                    return UPDATE;
+                default:
+                    throw new ConfigException(String.format("Unknown mode '%s'", value));
+            }
         }
     }
 }
