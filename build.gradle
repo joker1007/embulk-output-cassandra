@@ -19,7 +19,7 @@ sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 dependencies {
-    compile  "org.embulk:embulk-core:0.9.7"
+    compile  "org.embulk:embulk-core:0.9.20"
     compile("com.datastax.cassandra:cassandra-driver-core:3.5.0") {
         exclude module: 'netty-buffer'
         exclude module: 'netty-codec'
@@ -27,13 +27,21 @@ dependencies {
         exclude module: 'netty-handler'
         exclude module: 'netty-transport'
     }
+
+    // These two are included in embulk-core, but they are planned to be hidden from plugins.
+    // Including them in this plugin should not cause problems even against embulk-core with Netty.
+    //
+    // TODO: Use cassandra-driver-core's own Netty dependencies once embulk-core without Netty gets popular.
+    compile  "io.netty:netty-common:4.0.44.Final"
+    compile  "io.netty:netty-buffer:4.0.44.Final"
+
     compile  "io.netty:netty-codec:4.0.44.Final"
     compile  "io.netty:netty-handler:4.0.44.Final"
     compile  "io.netty:netty-transport:4.0.44.Final"
-    provided "org.embulk:embulk-core:0.9.7"
+    provided "org.embulk:embulk-core:0.9.20"
     testCompile "junit:junit:4.+"
-    testCompile  "org.embulk:embulk-test:0.9.7"
-    testCompile  "org.embulk:embulk-standards:0.9.7"
+    testCompile  "org.embulk:embulk-test:0.9.20"
+    testCompile  "org.embulk:embulk-standards:0.9.20"
 }
 
 task classpath(type: Copy, dependsOn: ["jar"]) {
