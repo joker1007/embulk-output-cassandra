@@ -19,8 +19,8 @@ sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 dependencies {
-    compile  "org.embulk:embulk-core:0.9.20"
-    compile("com.datastax.cassandra:cassandra-driver-core:3.5.0") {
+    compile  "org.embulk:embulk-core:0.9.22"
+    compile("com.datastax.cassandra:cassandra-driver-core:3.7.+") {
         exclude module: 'netty-buffer'
         exclude module: 'netty-codec'
         exclude module: 'netty-common'
@@ -40,8 +40,9 @@ dependencies {
     compile  "io.netty:netty-transport:4.0.44.Final"
     provided "org.embulk:embulk-core:0.9.20"
     testCompile "junit:junit:4.+"
-    testCompile  "org.embulk:embulk-test:0.9.20"
-    testCompile  "org.embulk:embulk-standards:0.9.20"
+    testCompile  "org.embulk:embulk-deps-buffer:0.9.22"
+    testCompile  "org.embulk:embulk-test:0.9.22"
+    testCompile  "org.embulk:embulk-standards:0.9.22"
 }
 
 task classpath(type: Copy, dependsOn: ["jar"]) {
