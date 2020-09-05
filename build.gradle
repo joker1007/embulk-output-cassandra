@@ -1,10 +1,10 @@
 plugins {
-    id "com.jfrog.bintray" version "1.1"
-    id "com.github.jruby-gradle.base" version "1.5.0"
+    id "com.jfrog.bintray" version "1.8.5"
+    id "org.embulk.embulk-plugins" version "0.4.2"
+    id "maven-publish"
     id "java"
     id "checkstyle"
 }
-import com.github.jrubygradle.JRubyExec
 repositories {
     mavenCentral()
     jcenter()
@@ -13,44 +13,53 @@ configurations {
     provided
 }
 
+group = "org.embulk.output.cassandra"
 version = "0.3.0"
+description = "Cassandra output plugin for Embulk"
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
+
+embulkPlugin {
+    mainClass = "org.embulk.output.kafka.CassandraOutputPlugin"
+    category = "output"
+    type = "cassandra"
+}
+
 dependencies {
-    compile  "org.embulk:embulk-core:0.9.22"
-    compile("com.datastax.cassandra:cassandra-driver-core:3.7.+") {
+    compileOnly  "org.embulk:embulk-core:0.9.23"
+    compile("com.datastax.cassandra:cassandra-driver-core:3.10.+") {
         exclude module: 'netty-buffer'
         exclude module: 'netty-codec'
         exclude module: 'netty-common'
         exclude module: 'netty-handler'
         exclude module: 'netty-transport'
+        exclude module: 'guava'
+        exclude module: 'slf4j-api'
+        exclude module: 'jackson-databind'
+        exclude module: 'jackson-core'
     }
 
-    // These two are included in embulk-core, but they are planned to be hidden from plugins.
-    // Including them in this plugin should not cause problems even against embulk-core with Netty.
-    //
-    // TODO: Use cassandra-driver-core's own Netty dependencies once embulk-core without Netty gets popular.
     compile  "io.netty:netty-common:4.0.44.Final"
     compile  "io.netty:netty-buffer:4.0.44.Final"
 
     compile  "io.netty:netty-codec:4.0.44.Final"
     compile  "io.netty:netty-handler:4.0.44.Final"
     compile  "io.netty:netty-transport:4.0.44.Final"
-    provided "org.embulk:embulk-core:0.9.20"
+
     testCompile "junit:junit:4.+"
-    testCompile  "org.embulk:embulk-deps-buffer:0.9.22"
-    testCompile  "org.embulk:embulk-test:0.9.22"
-    testCompile  "org.embulk:embulk-standards:0.9.22"
+    testCompile  "org.embulk:embulk-deps-buffer:0.9.23"
+    testCompile  "org.embulk:embulk-deps-config:0.9.23"
+    testCompile  "org.embulk:embulk-test:0.9.23"
+    testCompile  "org.embulk:embulk-standards:0.9.23"
+    testCompile  "org.cassandraunit:cassandra-unit:3.11.2.0"
 }
 
-task classpath(type: Copy, dependsOn: ["jar"]) {
-    doFirst { file("classpath").deleteDir() }
-    from (configurations.runtime - configurations.provided + files(jar.archivePath))
-    into "classpath"
+test {
+    minHeapSize = "512m"
+    maxHeapSize = "4g"
 }
-clean { delete "classpath" }
 
 checkstyle {
     configFile = file("${project.rootDir}/config/checkstyle/checkstyle.xml")
@@ -69,49 +78,3 @@ task checkstyle(type: Checkstyle) {
     source = sourceSets.main.allJava + sourceSets.test.allJava
 }
 
-task gem(type: JRubyExec, dependsOn: ["gemspec", "classpath"]) {
-    jrubyArgs "-S"
-    script "gem"
-    scriptArgs "build", "${project.name}.gemspec"
-    doLast { ant.move(file: "${project.name}-${project.version}.gem", todir: "pkg") }
-}
-
-task gemPush(type: JRubyExec, dependsOn: ["gem"]) {
-    jrubyArgs "-S"
-    script "gem"
-    scriptArgs "push", "pkg/${project.name}-${project.version}.gem"
-}
-
-task "package"(dependsOn: ["gemspec", "classpath"]) {
-    doLast {
-        println "> Build succeeded."
-        println "> You can run embulk with '-L ${file(".").absolutePath}' argument."
-    }
-}
-
-task gemspec {
-    ext.gemspecFile = file("${project.name}.gemspec")
-    inputs.file "build.gradle"
-    outputs.file gemspecFile
-    doLast { gemspecFile.write($/
-Gem::Specification.new do |spec|
-  spec.name          = "${project.name}"
-  spec.version       = "${project.version}"
-  spec.authors       = ["joker1007"]
-  spec.summary       = %[Cassandra output plugin for Embulk]
-  spec.description   = %[Dumps records to Apache Cassandra.]
-  spec.email         = ["kakyoin.hierophant@gmail.com"]
-  spec.licenses      = ["MIT"]
-  spec.homepage      = "https://github.com/joker1007/embulk-output-cassandra"
-
-  spec.files         = `git ls-files`.split("\n") + Dir["classpath/*.jar"]
-  spec.test_files    = spec.files.grep(%r"^(test|spec)/")
-  spec.require_paths = ["lib"]
-
-  spec.add_development_dependency 'bundler', ['~> 1.0']
-  spec.add_development_dependency 'rake', ['>= 10.0']
-end
-/$)
-    }
-}
-clean { delete "${project.name}.gemspec" }

@@ -9,6 +9,8 @@ import com.datastax.driver.core.TupleType;
 import com.datastax.driver.core.TupleValue;
 import com.datastax.driver.core.utils.UUIDs;
 import com.google.common.io.Resources;
+import org.apache.thrift.transport.TTransportException;
+import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 import org.embulk.config.ConfigSource;
 import org.embulk.spi.OutputPlugin;
 import org.embulk.test.EmbulkTests;
@@ -48,6 +50,15 @@ public class TestCassandraOutputPlugin
             .registerPlugin(OutputPlugin.class, "cassandra", CassandraOutputPlugin.class)
             .build();
 
+    static {
+        try {
+            EmbeddedCassandraServerHelper.startEmbeddedCassandra();
+        }
+        catch (TTransportException | IOException | InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+    }
+
     private Cluster cluster;
     private Session session;
 
@@ -69,7 +80,7 @@ public class TestCassandraOutputPlugin
     {
         String port = System.getenv("CASSANDRA_PORT");
         if (port == null) {
-            port = "9042";
+            port = "9142";
         }
         return port;
     }
