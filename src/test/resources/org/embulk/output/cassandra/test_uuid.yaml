@@ -1,3 +1,4 @@
 type: cassandra
 keyspace: embulk_test
 table: "test_uuid"
+port: 9142

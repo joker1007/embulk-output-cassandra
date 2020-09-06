@@ -1,3 +1,4 @@
 type: cassandra
 keyspace: embulk_test
 table: "test_counter"
+port: 9142

@@ -3,7 +3,7 @@ package org.embulk.output.cassandra;
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnMetadata;
-import com.datastax.driver.core.DataType;
+import com.datastax.driver.core.DataType.Name;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Session;
@@ -15,10 +15,9 @@ import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.querybuilder.Update;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
+import com.google.common.collect.ImmutableMap.Builder;
 import org.embulk.config.Config;
 import org.embulk.config.ConfigDefault;
 import org.embulk.config.ConfigDiff;
@@ -43,6 +42,7 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class CassandraOutputPlugin
@@ -110,7 +110,7 @@ public class CassandraOutputPlugin
     @Override
     public ConfigDiff transaction(ConfigSource config,
             Schema schema, int taskCount,
-            OutputPlugin.Control control)
+            Control control)
     {
         PluginTask task = config.loadConfig(PluginTask.class);
 
@@ -120,7 +120,7 @@ public class CassandraOutputPlugin
     @Override
     public ConfigDiff resume(TaskSource taskSource,
             Schema schema, int taskCount,
-            OutputPlugin.Control control)
+            Control control)
     {
         control.run(taskSource);
         return Exec.newConfigDiff();
@@ -153,7 +153,7 @@ public class CassandraOutputPlugin
         }
 
         List<ColumnMetadata> columns = tableMetadata.getColumns();
-        boolean isCounterTable = columns.stream().anyMatch(col -> col.getType().getName() == DataType.Name.COUNTER);
+        boolean isCounterTable = columns.stream().anyMatch(col -> col.getType().getName() == Name.COUNTER);
 
         BuiltStatement query;
         if (isCounterTable) {
@@ -162,7 +162,7 @@ public class CassandraOutputPlugin
                 update.using(QueryBuilder.ttl(task.getTtl().get()));
             }
             for (ColumnMetadata column : tableMetadata.getColumns()) {
-                if (column.getType().getName() == DataType.Name.COUNTER) {
+                if (column.getType().getName() == Name.COUNTER) {
                     update.with(QueryBuilder.incr(column.getName(), QueryBuilder.bindMarker(column.getName())));
                 }
                 else {
@@ -209,7 +209,7 @@ public class CassandraOutputPlugin
             query = insert;
         }
 
-        ImmutableMap.Builder<String, CassandraColumnSetter> columnSettersBuilder = ImmutableMap.builder();
+        Builder<String, CassandraColumnSetter> columnSettersBuilder = ImmutableMap.builder();
         ImmutableList.Builder<String> uuidColumnsBuilder = ImmutableList.builder();
         for (ColumnMetadata column : tableMetadata.getColumns()) {
             columnSettersBuilder.put(column.getName(), CassandraColumnSetterFactory.createColumnSetter(column, cluster));
@@ -221,8 +221,9 @@ public class CassandraOutputPlugin
         }
         Map<String, CassandraColumnSetter> columnSetters = columnSettersBuilder.build();
         List<String> uuidColumns = uuidColumnsBuilder.build();
-        List<ColumnSetterVisitor> columnVisitors = Lists.transform(schema.getColumns(), (column) ->
-                new ColumnSetterVisitor(pageReader, columnSetters.get(column.getName())));
+        List<ColumnSetterVisitor> columnVisitors = schema.getColumns().stream().map((column) ->
+            new ColumnSetterVisitor(pageReader, columnSetters.get(column.getName())))
+            .collect(Collectors.toList());
 
         logger.info("Query: {}", query.getQueryString());
 
@@ -242,7 +243,7 @@ public class CassandraOutputPlugin
         }
 
         if (task.getUsername().isPresent()) {
-            builder.withCredentials(task.getUsername().get(), task.getPassword().orNull());
+            builder.withCredentials(task.getUsername().get(), task.getPassword().orElse(null));
         }
 
         if (task.getClustername().isPresent()) {
