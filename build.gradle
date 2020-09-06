@@ -78,3 +78,17 @@ task checkstyle(type: Checkstyle) {
     source = sourceSets.main.allJava + sourceSets.test.allJava
 }
 
+gem {
+    from("LICENSE.txt")
+    authors = [ "joker1007" ]
+    email = [ "kakyoin.hierophant@gmail.com" ]
+    description = "Cassandra output plugin for Embulk"
+    summary = "Cassandra output plugin for Embulk"
+    homepage = "https://github.com/joker1007/embulk-output-cassandra"
+    licenses = [ "MIT" ]
+}
+
+gemPush {
+    host = "https://rubygems.org"
+}
+
