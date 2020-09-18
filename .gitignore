@@ -12,3 +12,4 @@ build/
 .project
 out/
 target/
+*.iml
