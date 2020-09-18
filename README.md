@@ -67,7 +67,7 @@ For example, If input data = {id: 1, count: 5}, Executed Statement is `UPDATE ta
 - **cluster_name**: cluster name (string, default: `null`)
 - **keyspace**: target keyspace name (string, required)
 - **table**: target table name (string, required)
-- **mode**: insert or update (string, default: `"insert"`)
+- **mode**: insert or update or delete (string, default: `"insert"`)
 - **if_not_exists**: Add "IF NOT EXISTS" to INSERT query (boolean, default: `false`)
 - **if_exists**: Add "IF EXISTS" to UPDATE query (boolean, default: `false`)
 - **ttl**: Add "TTL" to INSERT query (integer, default: `null`)
