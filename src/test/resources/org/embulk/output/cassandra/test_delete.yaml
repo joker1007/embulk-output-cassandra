@@ -1,0 +1,5 @@
+type: cassandra
+keyspace: embulk_test
+table: "test_basic"
+port: 9142
+mode: delete
