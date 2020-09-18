@@ -10,6 +10,7 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SocketOptions;
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.querybuilder.BuiltStatement;
+import com.datastax.driver.core.querybuilder.Delete;
 import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.querybuilder.Update;
@@ -153,6 +154,7 @@ public class CassandraOutputPlugin
         }
 
         List<ColumnMetadata> columns = tableMetadata.getColumns();
+        List<String> primaryKeys = tableMetadata.getPrimaryKey().stream().map(ColumnMetadata::getName).collect(Collectors.toList());
         boolean isCounterTable = columns.stream().anyMatch(col -> col.getType().getName() == Name.COUNTER);
 
         BuiltStatement query;
@@ -173,7 +175,6 @@ public class CassandraOutputPlugin
         }
         else if (task.getMode() == Mode.UPDATE) {
             Update update = QueryBuilder.update(task.getKeyspace(), task.getTable());
-            List<String> primaryKeys = tableMetadata.getPrimaryKey().stream().map(ColumnMetadata::getName).collect(Collectors.toList());
             List<String> columnNames = tableMetadata.getColumns().stream().map(ColumnMetadata::getName).collect(Collectors.toList());
 
             if (task.getIfExists()) {
@@ -194,6 +195,13 @@ public class CassandraOutputPlugin
                 }
             }
             query = update;
+        }
+        else if (task.getMode() == Mode.DELETE) {
+            Delete delete = QueryBuilder.delete().from(task.getKeyspace(), task.getTable());
+            for (String pkey : primaryKeys) {
+                delete.where(QueryBuilder.eq(pkey, QueryBuilder.bindMarker(pkey)));
+            }
+            query = delete;
         }
         else {
             Insert insert = QueryBuilder.insertInto(task.getKeyspace(), task.getTable());
@@ -222,14 +230,18 @@ public class CassandraOutputPlugin
         Map<String, CassandraColumnSetter> columnSetters = columnSettersBuilder.build();
         List<String> uuidColumns = uuidColumnsBuilder.build();
         List<ColumnSetterVisitor> columnVisitors = schema.getColumns().stream().map((column) ->
-            new ColumnSetterVisitor(pageReader, columnSetters.get(column.getName())))
+            new ColumnSetterVisitor(
+                pageReader,
+                columnSetters.get(column.getName()),
+                primaryKeys.contains(column.getName()),
+                task.getMode() == Mode.DELETE))
             .collect(Collectors.toList());
 
         logger.info("Query: {}", query.getQueryString());
 
         PreparedStatement prepared = session.prepare(query);
-        if (task.getIdempotent()) {
-            prepared.setIdempotent(task.getIdempotent());
+        if (task.getIdempotent() || task.getMode() == Mode.DELETE) {
+            prepared.setIdempotent(true);
         }
 
         return new PluginPageOuput(cluster, session, pageReader, tableMetadata, uuidColumns, columnSetters, columnVisitors, prepared, task);
@@ -315,7 +327,7 @@ public class CassandraOutputPlugin
                 session.execute(statement);
                 counter++;
                 if (counter >= nextLoggingCount) {
-                    logger.info("Inserted {} records", counter);
+                    logger.info(task.getMode().logMessage(), counter);
                     nextLoggingCount = nextLoggingCount * 2;
                 }
             }
@@ -348,8 +360,27 @@ public class CassandraOutputPlugin
     }
 
     public enum Mode {
-        INSERT,
-        UPDATE;
+        INSERT {
+            @Override
+            public String logMessage()
+            {
+                return "Inserted {} records";
+            }
+        },
+        UPDATE {
+            @Override
+            public String logMessage()
+            {
+                return "Updated {} records";
+            }
+        },
+        DELETE {
+            @Override
+            public String logMessage()
+            {
+                return "Deleted {} records";
+            }
+        };
 
         @JsonValue
         @Override
@@ -366,9 +397,13 @@ public class CassandraOutputPlugin
                     return INSERT;
                 case "update":
                     return UPDATE;
+                case "delete":
+                    return DELETE;
                 default:
                     throw new ConfigException(String.format("Unknown mode '%s'", value));
             }
         }
+
+        public abstract String logMessage();
     }
 }

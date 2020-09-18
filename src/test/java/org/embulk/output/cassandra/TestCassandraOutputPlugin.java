@@ -157,6 +157,14 @@ public class TestCassandraOutputPlugin
         assertEquals(8, row3.getShort("smallint_item"));
         assertFalse(row3.getBool("boolean_item"));
         assertEquals(createDate(2018, 7, 1, 10, 0, 2, 0), row3.getTimestamp("timestamp_item"));
+
+        ConfigSource deleteConfig = loadYamlResource("test_delete.yaml");
+        deleteConfig.set("hosts", getCassandraHostAsList());
+        result = embulk.runOutput(deleteConfig, input);
+
+        assertEquals(3, result.getOutputTaskReports().get(0).get(Long.class, "inserted_record_count").longValue());
+        int rowCount = session.execute("SELECT * FROM embulk_test.test_basic").all().size();
+        assertEquals(0, rowCount);
     }
 
     @Test

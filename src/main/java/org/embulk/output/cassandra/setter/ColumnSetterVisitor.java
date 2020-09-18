@@ -9,13 +9,17 @@ public class ColumnSetterVisitor implements ColumnVisitor
 {
     private final PageReader pageReader;
     private final CassandraColumnSetter setter;
+    private final boolean isPkey;
+    private final boolean isDelete;
 
     private BoundStatement statement;
 
-    public ColumnSetterVisitor(PageReader pageReader, CassandraColumnSetter setter)
+    public ColumnSetterVisitor(PageReader pageReader, CassandraColumnSetter setter, boolean isPkey, boolean isDelete)
     {
         this.pageReader = pageReader;
         this.setter = setter;
+        this.isPkey = isPkey;
+        this.isDelete = isDelete;
     }
 
     public boolean hasSetter()
@@ -31,6 +35,10 @@ public class ColumnSetterVisitor implements ColumnVisitor
     @Override
     public void booleanColumn(Column column)
     {
+        if (isDelete && !isPkey) {
+            return;
+        }
+
         if (pageReader.isNull(column)) {
             setter.setNullValue(statement);
         }
@@ -42,6 +50,10 @@ public class ColumnSetterVisitor implements ColumnVisitor
     @Override
     public void longColumn(Column column)
     {
+        if (isDelete && !isPkey) {
+            return;
+        }
+
         if (pageReader.isNull(column)) {
             setter.setNullValue(statement);
         }
@@ -53,6 +65,10 @@ public class ColumnSetterVisitor implements ColumnVisitor
     @Override
     public void doubleColumn(Column column)
     {
+        if (isDelete && !isPkey) {
+            return;
+        }
+
         if (pageReader.isNull(column)) {
             setter.setNullValue(statement);
         }
@@ -64,6 +80,10 @@ public class ColumnSetterVisitor implements ColumnVisitor
     @Override
     public void stringColumn(Column column)
     {
+        if (isDelete && !isPkey) {
+            return;
+        }
+
         if (pageReader.isNull(column)) {
             setter.setNullValue(statement);
         }
@@ -75,6 +95,10 @@ public class ColumnSetterVisitor implements ColumnVisitor
     @Override
     public void timestampColumn(Column column)
     {
+        if (isDelete && !isPkey) {
+            return;
+        }
+
         if (pageReader.isNull(column)) {
             setter.setNullValue(statement);
         }
@@ -86,6 +110,10 @@ public class ColumnSetterVisitor implements ColumnVisitor
     @Override
     public void jsonColumn(Column column)
     {
+        if (isDelete && !isPkey) {
+            return;
+        }
+
         if (pageReader.isNull(column)) {
             setter.setNullValue(statement);
         }
