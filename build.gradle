@@ -9,9 +9,6 @@ repositories {
     mavenCentral()
     jcenter()
 }
-configurations {
-    provided
-}
 
 group = "org.embulk.output.cassandra"
 version = "0.3.0"
