@@ -19,7 +19,7 @@ targetCompatibility = 1.8
 
 
 embulkPlugin {
-    mainClass = "org.embulk.output.kafka.CassandraOutputPlugin"
+    mainClass = "org.embulk.output.cassandra.CassandraOutputPlugin"
     category = "output"
     type = "cassandra"
 }
