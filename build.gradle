@@ -1,6 +1,5 @@
 plugins {
-    id "com.jfrog.bintray" version "1.8.5"
-    id "org.embulk.embulk-plugins" version "0.4.2"
+    id "org.embulk.embulk-plugins" version "0.5.5"
     id "maven-publish"
     id "java"
     id "checkstyle"
@@ -25,32 +24,49 @@ embulkPlugin {
 }
 
 dependencies {
-    compileOnly  "org.embulk:embulk-core:0.9.23"
-    compile("com.datastax.cassandra:cassandra-driver-core:3.10.+") {
+    compileOnly "org.embulk:embulk-spi:0.11"
+    implementation("com.datastax.cassandra:cassandra-driver-core:3.10.+") {
         exclude module: 'netty-buffer'
         exclude module: 'netty-codec'
         exclude module: 'netty-common'
         exclude module: 'netty-handler'
         exclude module: 'netty-transport'
-        exclude module: 'guava'
         exclude module: 'slf4j-api'
         exclude module: 'jackson-databind'
         exclude module: 'jackson-core'
     }
+    implementation  "io.netty:netty-common:4.0.44.Final"
+    implementation  "io.netty:netty-buffer:4.0.44.Final"
 
-    compile  "io.netty:netty-common:4.0.44.Final"
-    compile  "io.netty:netty-buffer:4.0.44.Final"
+    implementation  "io.netty:netty-codec:4.0.44.Final"
+    implementation  "io.netty:netty-handler:4.0.44.Final"
+    implementation  "io.netty:netty-transport:4.0.44.Final"
 
-    compile  "io.netty:netty-codec:4.0.44.Final"
-    compile  "io.netty:netty-handler:4.0.44.Final"
-    compile  "io.netty:netty-transport:4.0.44.Final"
+    implementation("org.embulk:embulk-util-config:0.3.4") {
+        exclude group: "com.fasterxml.jackson.core", module: "jackson-annotations"
+        exclude group: "com.fasterxml.jackson.core", module: "jackson-core"
+        exclude group: "com.fasterxml.jackson.core", module: "jackson-databind"
+        exclude group: "com.fasterxml.jackson.datatype", module: "jackson-datatype-jdk8"
+        exclude group: "javax.validation", module: "validation-api"
+    }
 
-    testCompile "junit:junit:4.+"
-    testCompile  "org.embulk:embulk-deps-buffer:0.9.23"
-    testCompile  "org.embulk:embulk-deps-config:0.9.23"
-    testCompile  "org.embulk:embulk-test:0.9.23"
-    testCompile  "org.embulk:embulk-standards:0.9.23"
-    testCompile  "org.cassandraunit:cassandra-unit:3.11.2.0"
+    implementation "com.fasterxml.jackson.core:jackson-annotations:2.6.7"
+    implementation "com.fasterxml.jackson.core:jackson-core:2.6.7"
+    implementation "com.fasterxml.jackson.core:jackson-databind:2.6.7"
+    implementation "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.6.7"
+    implementation "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.6.7"
+
+    testImplementation "junit:junit:4.+"
+    testImplementation "org.embulk:embulk-spi:0.11"
+    testImplementation "org.embulk:embulk-core:0.11.0"
+    testImplementation "org.embulk:embulk-junit4:0.11.0"
+    testImplementation "org.embulk:embulk-input-file:0.11.0"
+    testImplementation "org.embulk:embulk-parser-csv:0.11.0"
+    testImplementation "org.embulk:embulk-deps:0.11.0"
+
+    testImplementation("org.cassandraunit:cassandra-unit:3.11.2.0") {
+        exclude module: 'guava'
+    }
 }
 
 test {
