@@ -10,7 +10,7 @@ repositories {
 }
 
 group = "org.embulk.output.cassandra"
-version = "0.4.1"
+version = "0.5.0"
 description = "Cassandra output plugin for Embulk"
 
 sourceCompatibility = 1.8
