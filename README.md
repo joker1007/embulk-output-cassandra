@@ -1,6 +1,6 @@
 # Cassandra output plugin for Embulk
 
-[![joker1007](https://circleci.com/gh/joker1007/embulk-output-cassandra.svg?style=svg)](https://circleci.com/gh/joker1007/embulk-output-cassandra)
+![Java CI](https://github.com/joker1007/embulk-output-cassandra/workflows/Java%20CI/badge.svg)
 
 Apache Cassandra output plugin for Embulk.
 
