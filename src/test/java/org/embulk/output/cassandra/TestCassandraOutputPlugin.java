@@ -12,7 +12,11 @@ import com.google.common.io.Resources;
 import org.apache.thrift.transport.TTransportException;
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 import org.embulk.config.ConfigSource;
+import org.embulk.input.file.LocalFileInputPlugin;
+import org.embulk.parser.csv.CsvParserPlugin;
+import org.embulk.spi.FileInputPlugin;
 import org.embulk.spi.OutputPlugin;
+import org.embulk.spi.ParserPlugin;
 import org.embulk.test.EmbulkTests;
 import org.embulk.test.TestingEmbulk;
 import org.junit.After;
@@ -43,11 +47,13 @@ import static org.junit.Assert.assertTrue;
 
 public class TestCassandraOutputPlugin
 {
-    private static final String RESOURCE_PATH = "org/embulk/output/cassandra/";
+    private static final String RESOURCE_PATH = "/org/embulk/output/cassandra/";
 
     @Rule
     public TestingEmbulk embulk = TestingEmbulk.builder()
             .registerPlugin(OutputPlugin.class, "cassandra", CassandraOutputPlugin.class)
+            .registerPlugin(FileInputPlugin.class, "file", LocalFileInputPlugin.class)
+            .registerPlugin(ParserPlugin.class, "csv", CsvParserPlugin.class)
             .build();
 
     static {
@@ -355,7 +361,7 @@ public class TestCassandraOutputPlugin
 
     private Path getInputPath(String filename)
     {
-        return new File(Resources.getResource(RESOURCE_PATH + filename).getFile()).toPath();
+        return new File(this.getClass().getResource(RESOURCE_PATH + filename).getFile()).toPath();
     }
 
     private Date createDate(int year, int month, int day, int hour, int min, int sec, int nsec)

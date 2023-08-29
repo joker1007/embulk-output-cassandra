@@ -19,25 +19,28 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
-import org.embulk.config.Config;
-import org.embulk.config.ConfigDefault;
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
-import org.embulk.config.Task;
 import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
 import org.embulk.output.cassandra.setter.CassandraColumnSetter;
 import org.embulk.output.cassandra.setter.CassandraColumnSetterFactory;
 import org.embulk.output.cassandra.setter.ColumnSetterVisitor;
 import org.embulk.spi.Column;
-import org.embulk.spi.Exec;
 import org.embulk.spi.OutputPlugin;
 import org.embulk.spi.Page;
 import org.embulk.spi.PageReader;
 import org.embulk.spi.Schema;
 import org.embulk.spi.TransactionalPageOutput;
+import org.embulk.util.config.Config;
+import org.embulk.util.config.ConfigDefault;
+import org.embulk.util.config.ConfigMapper;
+import org.embulk.util.config.ConfigMapperFactory;
+import org.embulk.util.config.Task;
+import org.embulk.util.config.TaskMapper;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -53,69 +56,72 @@ public class CassandraOutputPlugin
             extends Task
     {
         @Config("hosts")
-        public List<String> getHosts();
+        List<String> getHosts();
 
         @Config("port")
         @ConfigDefault("9042")
-        public int getPort();
+        int getPort();
 
         @Config("username")
         @ConfigDefault("null")
-        public Optional<String> getUsername();
+        Optional<String> getUsername();
 
         @Config("password")
         @ConfigDefault("null")
-        public Optional<String> getPassword();
+        Optional<String> getPassword();
 
         @Config("cluster_name")
         @ConfigDefault("null")
-        public Optional<String> getClustername();
+        Optional<String> getClustername();
 
         @Config("keyspace")
-        public String getKeyspace();
+        String getKeyspace();
 
         @Config("table")
-        public String getTable();
+        String getTable();
 
         @Config("mode")
         @ConfigDefault("\"insert\"")
-        public Mode getMode();
+        Mode getMode();
 
         @Config("if_not_exists")
         @ConfigDefault("false")
-        public Boolean getIfNotExists();
+        boolean getIfNotExists();
 
         @Config("if_exists")
         @ConfigDefault("false")
-        public Boolean getIfExists();
+        boolean getIfExists();
 
         @Config("ttl")
         @ConfigDefault("null")
-        public Optional<Integer> getTtl();
+        Optional<Integer> getTtl();
 
         @Config("idempotent")
         @ConfigDefault("false")
-        public Boolean getIdempotent();
+        boolean getIdempotent();
 
         @Config("connect_timeout")
         @ConfigDefault("5000")
-        public int getConnectTimeout();
+        int getConnectTimeout();
 
         @Config("request_timeout")
         @ConfigDefault("12000")
-        public int getRequestTimeout();
+        int getRequestTimeout();
     }
 
-    private final Logger logger = Exec.getLogger(CassandraOutputPlugin.class);
+    private static final Logger logger = LoggerFactory.getLogger(CassandraOutputPlugin.class);
+
+    private final ConfigMapperFactory configMapperFactory = ConfigMapperFactory.withDefault();
 
     @Override
     public ConfigDiff transaction(ConfigSource config,
             Schema schema, int taskCount,
             Control control)
     {
-        PluginTask task = config.loadConfig(PluginTask.class);
+        ConfigMapper configMapper = configMapperFactory.createConfigMapper();
+        PluginTask task = configMapper.map(config, PluginTask.class);
 
-        return resume(task.dump(), schema, taskCount, control);
+        return resume(task.toTaskSource(), schema, taskCount, control);
     }
 
     @Override
@@ -124,7 +130,7 @@ public class CassandraOutputPlugin
             Control control)
     {
         control.run(taskSource);
-        return Exec.newConfigDiff();
+        return configMapperFactory.newConfigDiff();
     }
 
     @Override
@@ -137,7 +143,8 @@ public class CassandraOutputPlugin
     @Override
     public TransactionalPageOutput open(TaskSource taskSource, Schema schema, int taskIndex)
     {
-        PluginTask task = taskSource.loadTask(PluginTask.class);
+        TaskMapper taskMapper = configMapperFactory.createTaskMapper();
+        PluginTask task = taskMapper.map(taskSource, PluginTask.class);
         PageReader pageReader = new PageReader(schema);
         Cluster cluster = getCluster(task);
 
@@ -145,12 +152,12 @@ public class CassandraOutputPlugin
 
         KeyspaceMetadata keyspaceMetadata = cluster.getMetadata().getKeyspace(task.getKeyspace());
         if (keyspaceMetadata == null) {
-            throw new RuntimeException("keyspace `" + task.getKeyspace() + "` is not found");
+            throw new ConfigException("keyspace `" + task.getKeyspace() + "` is not found");
         }
 
         TableMetadata tableMetadata = keyspaceMetadata.getTable(task.getTable());
         if (tableMetadata == null) {
-            throw new RuntimeException("table `" + task.getTable() + "` is not found");
+            throw new ConfigException("table `" + task.getTable() + "` is not found");
         }
 
         List<ColumnMetadata> columns = tableMetadata.getColumns();
@@ -353,7 +360,7 @@ public class CassandraOutputPlugin
         @Override
         public TaskReport commit()
         {
-            TaskReport report = Exec.newTaskReport();
+            TaskReport report = configMapperFactory.newTaskReport();
             report.set("inserted_record_count", counter);
             return report;
         }
