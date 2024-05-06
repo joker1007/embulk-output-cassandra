@@ -1,34 +1,30 @@
 package org.embulk.output.cassandra.setter;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.ColumnMetadata;
-import com.datastax.driver.core.TupleType;
-import com.datastax.driver.core.TupleValue;
-import org.msgpack.value.Value;
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
+import com.datastax.oss.driver.api.core.data.TupleValue;
+import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
+import com.datastax.oss.driver.api.core.type.TupleType;
+import org.embulk.output.cassandra.converter.ValueConverter;
+import org.embulk.spi.json.JsonValue;
 
 import java.util.List;
 
 public class TupleColumnSetter extends CassandraColumnSetter
 {
-    private final Cluster cluster;
-
-    public TupleColumnSetter(ColumnMetadata cassandraColumn, Cluster cluster)
+    public TupleColumnSetter(ColumnMetadata cassandraColumn)
     {
         super(cassandraColumn);
-        this.cluster = cluster;
     }
 
     @Override
-    public void setJsonValue(Value value, BoundStatement statement)
+    public void setJsonValue(JsonValue value, BoundStatementBuilder statement)
     {
-        if (!value.isArrayValue()) {
+        if (!value.isJsonArray()) {
             throw new RuntimeException(value.toJson() + " is not array value");
         }
 
-        TupleType tupleType = cluster.getMetadata().newTupleType(((TupleType) cassandraColumn.getType()).getComponentTypes());
-        List<Object> list = ValueConverter.convertList(value.asArrayValue().list());
-        TupleValue tupleValue = tupleType.newValue(list.toArray());
+        TupleType tupleType = (TupleType) cassandraColumn.getType();
+        TupleValue tupleValue = ValueConverter.convertToTupleValue(tupleType, value);
         statement.setTupleValue(cassandraColumn.getName(), tupleValue);
     }
 }

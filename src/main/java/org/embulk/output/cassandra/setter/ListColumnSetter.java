@@ -1,8 +1,10 @@
 package org.embulk.output.cassandra.setter;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.ColumnMetadata;
-import org.msgpack.value.Value;
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
+import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
+import org.embulk.output.cassandra.converter.ValueConverter;
+import org.embulk.spi.json.JsonValue;
 
 public class ListColumnSetter extends CassandraColumnSetter
 {
@@ -12,11 +14,12 @@ public class ListColumnSetter extends CassandraColumnSetter
     }
 
     @Override
-    public void setJsonValue(Value value, BoundStatement statement)
+    public void setJsonValue(JsonValue value, BoundStatementBuilder statement)
     {
-        if (!value.isArrayValue()) {
+        if (!value.isJsonArray()) {
             throw new RuntimeException(value.toJson() + " is not array value");
         }
-        statement.setList(cassandraColumn.getName(), ValueConverter.convertList(value.asArrayValue().list()));
+        GenericType genericType = ValueConverter.buildGenericTypeFromDataType(cassandraColumn.getType());
+        statement.set(cassandraColumn.getName(), ValueConverter.convertValue(cassandraColumn.getType(), value), genericType);
     }
 }

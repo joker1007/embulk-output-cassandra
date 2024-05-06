@@ -1,7 +1,7 @@
 package org.embulk.output.cassandra.setter;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.ColumnMetadata;
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
+import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
 
 public class BooleanColumnSetter extends CassandraColumnSetter
 {
@@ -11,19 +11,19 @@ public class BooleanColumnSetter extends CassandraColumnSetter
     }
 
     @Override
-    public void setBooleanValue(Boolean value, BoundStatement statement)
+    public void setBooleanValue(Boolean value, BoundStatementBuilder statement)
     {
         statement.setBool(cassandraColumn.getName(), value);
     }
 
     @Override
-    public void setLongValue(Long value, BoundStatement statement)
+    public void setLongValue(Long value, BoundStatementBuilder statement)
     {
         statement.setBool(cassandraColumn.getName(), value != 0);
     }
 
     @Override
-    public void setDoubleValue(Double value, BoundStatement statement)
+    public void setDoubleValue(Double value, BoundStatementBuilder statement)
     {
         statement.setBool(cassandraColumn.getName(), value != 0);
     }

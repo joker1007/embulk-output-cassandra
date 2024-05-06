@@ -1,9 +1,11 @@
 package org.embulk.output.cassandra.setter;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.ColumnMetadata;
-import org.embulk.spi.time.Timestamp;
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
+import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
+import org.embulk.spi.json.JsonValue;
 import org.msgpack.value.Value;
+
+import java.time.Instant;
 
 public class TextColumnSetter extends CassandraColumnSetter
 {
@@ -13,37 +15,37 @@ public class TextColumnSetter extends CassandraColumnSetter
     }
 
     @Override
-    public void setBooleanValue(Boolean value, BoundStatement statement)
+    public void setBooleanValue(Boolean value, BoundStatementBuilder statement)
     {
         statement.setString(cassandraColumn.getName(), value.toString());
     }
 
     @Override
-    public void setLongValue(Long value, BoundStatement statement)
+    public void setLongValue(Long value, BoundStatementBuilder statement)
     {
         statement.setString(cassandraColumn.getName(), value.toString());
     }
 
     @Override
-    public void setDoubleValue(Double value, BoundStatement statement)
+    public void setDoubleValue(Double value, BoundStatementBuilder statement)
     {
         statement.setString(cassandraColumn.getName(), value.toString());
     }
 
     @Override
-    public void setStringValue(String value, BoundStatement statement)
+    public void setStringValue(String value, BoundStatementBuilder statement)
     {
         statement.setString(cassandraColumn.getName(), value);
     }
 
     @Override
-    public void setTimestampValue(Timestamp value, BoundStatement statement)
+    public void setTimestampValue(Instant value, BoundStatementBuilder statement)
     {
         statement.setString(cassandraColumn.getName(), value.toString());
     }
 
     @Override
-    public void setJsonValue(Value value, BoundStatement statement)
+    public void setJsonValue(JsonValue value, BoundStatementBuilder statement)
     {
         statement.setString(cassandraColumn.getName(), value.toJson());
     }

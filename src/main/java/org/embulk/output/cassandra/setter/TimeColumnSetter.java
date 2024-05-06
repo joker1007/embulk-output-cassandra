@@ -1,8 +1,7 @@
 package org.embulk.output.cassandra.setter;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.ColumnMetadata;
-import org.embulk.spi.time.Timestamp;
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
+import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
 
 import java.time.Instant;
 import java.time.LocalTime;
@@ -17,30 +16,28 @@ public class TimeColumnSetter extends CassandraColumnSetter
     }
 
     @Override
-    public void setLongValue(Long value, BoundStatement statement)
+    public void setLongValue(Long value, BoundStatementBuilder statement)
     {
-        statement.setTime(cassandraColumn.getName(), value);
+        statement.setLocalTime(cassandraColumn.getName(), LocalTime.ofNanoOfDay(value));
     }
 
     @Override
-    public void setDoubleValue(Double value, BoundStatement statement)
+    public void setDoubleValue(Double value, BoundStatementBuilder statement)
     {
-        statement.setTime(cassandraColumn.getName(), value.longValue());
+        statement.setLocalTime(cassandraColumn.getName(), LocalTime.ofNanoOfDay(value.longValue()));
     }
 
     @Override
-    public void setStringValue(String value, BoundStatement statement)
+    public void setStringValue(String value, BoundStatementBuilder statement)
     {
         LocalTime time = LocalTime.parse(value);
-        statement.setTime(cassandraColumn.getName(), time.toNanoOfDay());
+        statement.setLocalTime(cassandraColumn.getName(), time);
     }
 
     @Override
-    public void setTimestampValue(Timestamp value, BoundStatement statement)
+    public void setTimestampValue(Instant value, BoundStatementBuilder statement)
     {
-        ZonedDateTime datetime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(value.toEpochMilli()), ZoneId.of("UTC"));
-        long nsec = datetime.toLocalTime().toNanoOfDay();
-
-        statement.setTime(cassandraColumn.getName(), nsec);
+        ZonedDateTime datetime = ZonedDateTime.ofInstant(value, ZoneId.of("UTC"));
+        statement.setLocalTime(cassandraColumn.getName(), datetime.toLocalTime());
     }
 }

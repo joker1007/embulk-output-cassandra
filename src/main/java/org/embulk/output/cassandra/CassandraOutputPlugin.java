@@ -1,24 +1,33 @@
 package org.embulk.output.cassandra;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.ColumnMetadata;
-import com.datastax.driver.core.DataType.Name;
-import com.datastax.driver.core.KeyspaceMetadata;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.SocketOptions;
-import com.datastax.driver.core.TableMetadata;
-import com.datastax.driver.core.querybuilder.BuiltStatement;
-import com.datastax.driver.core.querybuilder.Delete;
-import com.datastax.driver.core.querybuilder.Insert;
-import com.datastax.driver.core.querybuilder.QueryBuilder;
-import com.datastax.driver.core.querybuilder.Update;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.CqlSessionBuilder;
+import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
+import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
+import com.datastax.oss.driver.api.core.cql.PreparedStatement;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
+import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
+import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.querybuilder.QueryBuilder;
+import com.datastax.oss.driver.api.querybuilder.delete.Delete;
+import com.datastax.oss.driver.api.querybuilder.delete.DeleteSelection;
+import com.datastax.oss.driver.api.querybuilder.insert.Insert;
+import com.datastax.oss.driver.api.querybuilder.insert.InsertInto;
+import com.datastax.oss.driver.api.querybuilder.relation.Relation;
+import com.datastax.oss.driver.api.querybuilder.term.Term;
+import com.datastax.oss.driver.api.querybuilder.update.Assignment;
+import com.datastax.oss.driver.api.querybuilder.update.Update;
+import com.datastax.oss.driver.api.querybuilder.update.UpdateStart;
+import com.datastax.oss.driver.api.querybuilder.update.UpdateWithAssignments;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableMap.Builder;
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
@@ -27,7 +36,7 @@ import org.embulk.config.TaskSource;
 import org.embulk.output.cassandra.setter.CassandraColumnSetter;
 import org.embulk.output.cassandra.setter.CassandraColumnSetterFactory;
 import org.embulk.output.cassandra.setter.ColumnSetterVisitor;
-import org.embulk.spi.Column;
+import org.embulk.spi.Exec;
 import org.embulk.spi.OutputPlugin;
 import org.embulk.spi.Page;
 import org.embulk.spi.PageReader;
@@ -43,6 +52,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -70,9 +80,13 @@ public class CassandraOutputPlugin
         @ConfigDefault("null")
         Optional<String> getPassword();
 
-        @Config("cluster_name")
+        @Config("local_datacenter_name")
         @ConfigDefault("null")
-        Optional<String> getClustername();
+        Optional<String> getLocalDatacenterName();
+
+        @Config("local_datacenter_name")
+        @ConfigDefault("\"DcInferringLoadBalancingPolicy\"")
+        String getLoadBalancingPolicy();
 
         @Config("keyspace")
         String getKeyspace();
@@ -115,8 +129,8 @@ public class CassandraOutputPlugin
 
     @Override
     public ConfigDiff transaction(ConfigSource config,
-            Schema schema, int taskCount,
-            Control control)
+                                  Schema schema, int taskCount,
+                                  Control control)
     {
         ConfigMapper configMapper = configMapperFactory.createConfigMapper();
         PluginTask task = configMapper.map(config, PluginTask.class);
@@ -126,8 +140,8 @@ public class CassandraOutputPlugin
 
     @Override
     public ConfigDiff resume(TaskSource taskSource,
-            Schema schema, int taskCount,
-            Control control)
+                             Schema schema, int taskCount,
+                             Control control)
     {
         control.run(taskSource);
         return configMapperFactory.newConfigDiff();
@@ -135,8 +149,8 @@ public class CassandraOutputPlugin
 
     @Override
     public void cleanup(TaskSource taskSource,
-            Schema schema, int taskCount,
-            List<TaskReport> successTaskReports)
+                        Schema schema, int taskCount,
+                        List<TaskReport> successTaskReports)
     {
     }
 
@@ -145,144 +159,148 @@ public class CassandraOutputPlugin
     {
         TaskMapper taskMapper = configMapperFactory.createTaskMapper();
         PluginTask task = taskMapper.map(taskSource, PluginTask.class);
-        PageReader pageReader = new PageReader(schema);
-        Cluster cluster = getCluster(task);
+        PageReader pageReader = Exec.getPageReader(schema);
 
-        Session session = cluster.newSession();
+        CqlSession session = getSession(task);
 
-        KeyspaceMetadata keyspaceMetadata = cluster.getMetadata().getKeyspace(task.getKeyspace());
-        if (keyspaceMetadata == null) {
-            throw new ConfigException("keyspace `" + task.getKeyspace() + "` is not found");
-        }
+        KeyspaceMetadata keyspaceMetadata = session.getMetadata().getKeyspace(task.getKeyspace()).orElseThrow(() ->
+                new ConfigException("keyspace `" + task.getKeyspace() + "` is not found"));
 
-        TableMetadata tableMetadata = keyspaceMetadata.getTable(task.getTable());
-        if (tableMetadata == null) {
-            throw new ConfigException("table `" + task.getTable() + "` is not found");
-        }
+        TableMetadata tableMetadata = keyspaceMetadata.getTable(task.getTable()).orElseThrow(() ->
+                new ConfigException("table `" + task.getTable() + "` is not found"));
 
-        List<ColumnMetadata> columns = tableMetadata.getColumns();
-        List<String> primaryKeys = tableMetadata.getPrimaryKey().stream().map(ColumnMetadata::getName).collect(Collectors.toList());
-        boolean isCounterTable = columns.stream().anyMatch(col -> col.getType().getName() == Name.COUNTER);
+        Map<CqlIdentifier, ColumnMetadata> columns = tableMetadata.getColumns();
+        List<String> primaryKeys = tableMetadata.getPrimaryKey().stream().map(metadata -> metadata.getName().asInternal()).collect(Collectors.toList());
+        Optional<CqlIdentifier> counterColumn = columns.entrySet().stream()
+                .filter(e -> e.getValue().getType().equals(DataTypes.COUNTER))
+                .map(Map.Entry::getKey)
+                .findFirst();
 
-        BuiltStatement query;
-        if (isCounterTable) {
-            Update update = QueryBuilder.update(task.getKeyspace(), task.getTable());
+        SimpleStatement query;
+        if (counterColumn.isPresent()) {
+            if (schema.getColumns().stream().noneMatch(col -> counterColumn.get().asInternal().equals(col.getName()))) {
+                throw new ConfigException("counter column `" + counterColumn.get().asInternal() + "` is not found in schema");
+            }
+
+            UpdateStart updateStart = QueryBuilder.update(task.getKeyspace(), task.getTable());
             if (task.getTtl().isPresent()) {
-                update.using(QueryBuilder.ttl(task.getTtl().get()));
+                updateStart = updateStart.usingTtl(task.getTtl().get());
             }
-            for (ColumnMetadata column : tableMetadata.getColumns()) {
-                if (column.getType().getName() == Name.COUNTER) {
-                    update.with(QueryBuilder.incr(column.getName(), QueryBuilder.bindMarker(column.getName())));
-                }
-                else {
-                    update.where(QueryBuilder.eq(column.getName(), QueryBuilder.bindMarker(column.getName())));
-                }
-            }
-            query = update;
-        }
-        else if (task.getMode() == Mode.UPDATE) {
-            Update update = QueryBuilder.update(task.getKeyspace(), task.getTable());
-            List<String> columnNames = tableMetadata.getColumns().stream().map(ColumnMetadata::getName).collect(Collectors.toList());
 
+            UpdateWithAssignments assignments = updateStart.increment(counterColumn.get(), QueryBuilder.bindMarker(counterColumn.get()));
+
+            List<Relation> relations = schema.getColumns().stream()
+                    .filter(col -> !col.getName().equals(counterColumn.get().asInternal()))
+                    .filter(col -> columns.containsKey(CqlIdentifier.fromInternal(col.getName())))
+                    .map(col -> Relation.column(col.getName()).isEqualTo(QueryBuilder.bindMarker(col.getName())))
+                    .collect(Collectors.toList());
+            Update update = assignments.where(relations);
+            query = update.build();
+        } else if (task.getMode() == Mode.UPDATE) {
+            UpdateStart updateStart = QueryBuilder.update(task.getKeyspace(), task.getTable());
+            if (task.getTtl().isPresent()) {
+                updateStart = updateStart.usingTtl(task.getTtl().get());
+            }
+
+            List<Assignment> assignments = schema.getColumns().stream()
+                    .filter(col -> !primaryKeys.contains(col.getName()))
+                    .filter(col -> columns.containsKey(CqlIdentifier.fromInternal(col.getName())))
+                    .map(col -> Assignment.setColumn(col.getName(), QueryBuilder.bindMarker(col.getName())))
+                    .collect(Collectors.toList());
+            UpdateWithAssignments updateWithAssignments = updateStart.set(assignments);
+
+            List<Relation> relations = primaryKeys.stream()
+                    .map(pkey -> Relation.column(pkey).isEqualTo(QueryBuilder.bindMarker(pkey)))
+                    .collect(Collectors.toList());
+            Update update = updateWithAssignments.where(relations);
             if (task.getIfExists()) {
-                update.where().ifExists();
+                update = update.ifExists();
             }
-            if (task.getTtl().isPresent()) {
-                update.using(QueryBuilder.ttl(task.getTtl().get()));
-            }
-            for (String pkey : primaryKeys) {
-                update.where(QueryBuilder.eq(pkey, QueryBuilder.bindMarker(pkey)));
-            }
-            for (Column col : schema.getColumns()) {
-                if (primaryKeys.contains(col.getName())) {
-                    continue;
-                }
-                if (columnNames.contains(col.getName())) {
-                    update.with(QueryBuilder.set(col.getName(), QueryBuilder.bindMarker(col.getName())));
-                }
-            }
-            query = update;
-        }
-        else if (task.getMode() == Mode.DELETE) {
-            Delete delete = QueryBuilder.delete().from(task.getKeyspace(), task.getTable());
-            for (String pkey : primaryKeys) {
-                delete.where(QueryBuilder.eq(pkey, QueryBuilder.bindMarker(pkey)));
-            }
-            query = delete;
-        }
-        else {
-            Insert insert = QueryBuilder.insertInto(task.getKeyspace(), task.getTable());
+            query = update.build();
+        } else if (task.getMode() == Mode.DELETE) {
+            DeleteSelection deleteSelection = QueryBuilder.deleteFrom(task.getKeyspace(), task.getTable());
+            List<Relation> relations = primaryKeys.stream()
+                    .map(pkey -> Relation.column(pkey).isEqualTo(QueryBuilder.bindMarker(pkey)))
+                    .collect(Collectors.toList());
+            Delete delete = deleteSelection.where(relations);
+            query = delete.build();
+        } else {
+            InsertInto insertInto = QueryBuilder.insertInto(task.getKeyspace(), task.getTable());
+            Map<CqlIdentifier, Term> assignments = schema.getColumns().stream()
+                    .filter(col -> columns.containsKey(CqlIdentifier.fromInternal(col.getName())))
+                    .collect(Collectors.toMap(
+                            col -> CqlIdentifier.fromInternal(col.getName()),
+                            col -> QueryBuilder.bindMarker(col.getName())));
+            columns.values().stream()
+                    .filter(col -> col.getType().equals(DataTypes.UUID) || col.getType().equals(DataTypes.TIMEUUID))
+                    .forEach(col -> assignments.put(col.getName(), QueryBuilder.bindMarker()));
+            Insert insert = insertInto.valuesByIds(assignments);
             if (task.getIfNotExists()) {
-                insert.ifNotExists();
+                insert = insert.ifNotExists();
             }
             if (task.getTtl().isPresent()) {
-                insert.using(QueryBuilder.ttl(task.getTtl().get()));
+                insert = insert.usingTtl(task.getTtl().get());
             }
-            for (ColumnMetadata column : tableMetadata.getColumns()) {
-                insert.value(column.getName(), QueryBuilder.bindMarker(column.getName()));
-            }
-            query = insert;
+            query = insert.build();
         }
 
-        Builder<String, CassandraColumnSetter> columnSettersBuilder = ImmutableMap.builder();
+        ImmutableMap.Builder<String, CassandraColumnSetter> columnSettersBuilder = ImmutableMap.builder();
         ImmutableList.Builder<String> uuidColumnsBuilder = ImmutableList.builder();
-        for (ColumnMetadata column : tableMetadata.getColumns()) {
-            columnSettersBuilder.put(column.getName(), CassandraColumnSetterFactory.createColumnSetter(column, cluster));
-            switch (column.getType().getName()) {
-                case UUID:
-                case TIMEUUID:
-                    uuidColumnsBuilder.add(column.getName());
+        for (Map.Entry<CqlIdentifier, ColumnMetadata> column : columns.entrySet()) {
+            columnSettersBuilder.put(column.getKey().asInternal(), CassandraColumnSetterFactory.createColumnSetter(column.getValue()));
+            DataType type = column.getValue().getType();
+            if (type.equals(DataTypes.UUID) || type.equals(DataTypes.TIMEUUID)) {
+                uuidColumnsBuilder.add(column.getKey().asInternal());
             }
         }
-        Map<String, CassandraColumnSetter> columnSetters = columnSettersBuilder.build();
         List<String> uuidColumns = uuidColumnsBuilder.build();
-        List<ColumnSetterVisitor> columnVisitors = schema.getColumns().stream().map((column) ->
-            new ColumnSetterVisitor(
-                pageReader,
-                columnSetters.get(column.getName()),
-                primaryKeys.contains(column.getName()),
-                task.getMode() == Mode.DELETE))
-            .collect(Collectors.toList());
 
-        logger.info("Query: {}", query.getQueryString());
+        Map<String, CassandraColumnSetter> columnSetters = columnSettersBuilder.build();
+        List<ColumnSetterVisitor> columnVisitors = schema.getColumns().stream().map(column ->
+                        new ColumnSetterVisitor(
+                                pageReader,
+                                columnSetters.get(column.getName()),
+                                primaryKeys.contains(column.getName()),
+                                task.getMode() == Mode.DELETE))
+                .collect(Collectors.toList());
+
+        logger.info("Query: {}", query.getQuery());
+
+        if (task.getIdempotent() || task.getMode() == Mode.DELETE) {
+            query = query.setIdempotent(true);
+        }
 
         PreparedStatement prepared = session.prepare(query);
-        if (task.getIdempotent() || task.getMode() == Mode.DELETE) {
-            prepared.setIdempotent(true);
-        }
 
-        return new PluginPageOuput(cluster, session, pageReader, tableMetadata, uuidColumns, columnSetters, columnVisitors, prepared, task);
+        return new PluginPageOuput(session, pageReader, uuidColumns, columnSetters, columnVisitors, prepared, task);
     }
 
-    private Cluster getCluster(PluginTask task)
+    private CqlSession getSession(PluginTask task)
     {
-        Cluster.Builder builder = Cluster.builder();
+        CqlSessionBuilder builder = CqlSession.builder();
         for (String host : task.getHosts()) {
-            builder.addContactPointsWithPorts(new InetSocketAddress(host, task.getPort()));
+            builder.addContactPoint(new InetSocketAddress(host, task.getPort()));
         }
 
-        if (task.getUsername().isPresent()) {
-            builder.withCredentials(task.getUsername().get(), task.getPassword().orElse(null));
-        }
+        task.getUsername().ifPresent(username -> builder.withAuthCredentials(username, task.getPassword().orElse(null)));
 
-        if (task.getClustername().isPresent()) {
-            builder.withClusterName(task.getClustername().get());
-        }
+        task.getLocalDatacenterName().ifPresent(builder::withLocalDatacenter);
 
-        builder.withSocketOptions(
-                new SocketOptions()
-                        .setConnectTimeoutMillis(task.getConnectTimeout())
-                        .setReadTimeoutMillis(task.getRequestTimeout()));
+        DriverConfigLoader loader = DriverConfigLoader.programmaticBuilder()
+                .withString(DefaultDriverOption.LOAD_BALANCING_POLICY_CLASS, task.getLoadBalancingPolicy())
+                .withDuration(DefaultDriverOption.REQUEST_TIMEOUT, Duration.ofMillis(task.getRequestTimeout()))
+                .withDuration(DefaultDriverOption.CONNECTION_INIT_QUERY_TIMEOUT, Duration.ofMillis(task.getConnectTimeout()))
+                .build();
+
+        builder.withConfigLoader(loader);
 
         return builder.build();
     }
 
     public class PluginPageOuput implements TransactionalPageOutput
     {
-        private final Cluster cluster;
-        private final Session session;
+        private final CqlSession session;
         private final PageReader pageReader;
-        private final TableMetadata tableMetadata;
         private final List<String> uuidColumns;
         private final Map<String, CassandraColumnSetter> columnSetters;
         private final List<ColumnSetterVisitor> columnVisitors;
@@ -292,20 +310,16 @@ public class CassandraOutputPlugin
         private long nextLoggingCount = 1;
 
         public PluginPageOuput(
-                Cluster cluster,
-                Session session,
+                CqlSession session,
                 PageReader pageReader,
-                TableMetadata tableMetadata,
                 List<String> uuidColumns,
                 Map<String, CassandraColumnSetter> columnSetters,
                 List<ColumnSetterVisitor> columnVisitors,
                 PreparedStatement prepared,
                 PluginTask task)
         {
-            this.cluster = cluster;
             this.session = session;
             this.pageReader = pageReader;
-            this.tableMetadata = tableMetadata;
             this.uuidColumns = uuidColumns;
             this.columnSetters = columnSetters;
             this.columnVisitors = columnVisitors;
@@ -318,20 +332,20 @@ public class CassandraOutputPlugin
         {
             pageReader.setPage(page);
             while (pageReader.nextRecord()) {
-                BoundStatement statement = prepared.bind();
+                BoundStatementBuilder statementBuilder = prepared.boundStatementBuilder();
 
                 for (String uuidColumn : uuidColumns) {
-                    columnSetters.get(uuidColumn).setNullValue(statement);
+                    columnSetters.get(uuidColumn).setNullValue(statementBuilder);
                 }
 
                 for (int i = 0; i < pageReader.getSchema().getColumns().size(); i++) {
                     ColumnSetterVisitor visitor = columnVisitors.get(i);
-                    visitor.setStatement(statement);
+                    visitor.setStatementBuilder(statementBuilder);
                     if (visitor.hasSetter()) {
                         pageReader.getSchema().getColumn(i).visit(visitor);
                     }
                 }
-                session.execute(statement);
+                session.execute(statementBuilder.build());
                 counter++;
                 if (counter >= nextLoggingCount) {
                     logger.info(task.getMode().logMessage(), counter);
@@ -349,7 +363,6 @@ public class CassandraOutputPlugin
         public void close()
         {
             session.close();
-            cluster.close();
         }
 
         @Override
@@ -366,7 +379,8 @@ public class CassandraOutputPlugin
         }
     }
 
-    public enum Mode {
+    public enum Mode
+    {
         INSERT {
             @Override
             public String logMessage()
@@ -399,7 +413,7 @@ public class CassandraOutputPlugin
         @JsonCreator
         public static Mode fromString(String value)
         {
-            switch(value) {
+            switch (value) {
                 case "insert":
                     return INSERT;
                 case "update":

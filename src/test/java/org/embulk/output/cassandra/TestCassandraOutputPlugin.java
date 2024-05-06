@@ -1,16 +1,11 @@
 package org.embulk.output.cassandra;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.LocalDate;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.TupleType;
-import com.datastax.driver.core.TupleValue;
-import com.datastax.driver.core.utils.UUIDs;
-import com.google.common.io.Resources;
-import org.apache.thrift.transport.TTransportException;
-import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.data.TupleValue;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.TupleType;
+import com.datastax.oss.driver.api.core.uuid.Uuids;
 import org.embulk.config.ConfigSource;
 import org.embulk.input.file.LocalFileInputPlugin;
 import org.embulk.parser.csv.CsvParserPlugin;
@@ -23,17 +18,20 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.testcontainers.containers.CassandraContainer;
 
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.InetAddress;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -50,58 +48,40 @@ public class TestCassandraOutputPlugin
     private static final String RESOURCE_PATH = "/org/embulk/output/cassandra/";
 
     @Rule
+    public CassandraContainer<?> cassandra = new CassandraContainer<>("cassandra:4.0");
+
+    @Rule
     public TestingEmbulk embulk = TestingEmbulk.builder()
             .registerPlugin(OutputPlugin.class, "cassandra", CassandraOutputPlugin.class)
             .registerPlugin(FileInputPlugin.class, "file", LocalFileInputPlugin.class)
             .registerPlugin(ParserPlugin.class, "csv", CsvParserPlugin.class)
             .build();
 
-    static {
-        try {
-            EmbeddedCassandraServerHelper.startEmbeddedCassandra();
-        }
-        catch (TTransportException | IOException | InterruptedException e) {
-          throw new RuntimeException(e);
-        }
+    private CqlSession session;
+
+    private CqlSession getSession()
+    {
+        return CqlSession
+                .builder()
+                .addContactPoint(cassandra.getContactPoint())
+                .withLocalDatacenter(cassandra.getLocalDatacenter())
+                .build();
     }
 
-    private Cluster cluster;
-    private Session session;
-
-    private static String getCassandraHost()
+    private List<String> getCassandraHostAsList()
     {
-        String host = System.getenv("CASSANDRA_HOST");
-        if (host == null) {
-            host = "localhost";
-        }
-        return host;
+        return Arrays.asList(cassandra.getHost());
     }
 
-    private static List<String> getCassandraHostAsList()
+    private int getCassandraPort()
     {
-        return Arrays.asList(getCassandraHost());
-    }
-
-    private static String getCassandraPort()
-    {
-        String port = System.getenv("CASSANDRA_PORT");
-        if (port == null) {
-            port = "9142";
-        }
-        return port;
-    }
-
-    private static Cluster getCluster()
-    {
-        return Cluster.builder().addContactPoint(getCassandraHost())
-                .withPort(Integer.parseInt(getCassandraPort())).build();
+        return cassandra.getFirstMappedPort();
     }
 
     @Before
     public void setup()
     {
-        cluster = getCluster();
-        session = cluster.connect();
+        session = getSession();
         String createKeyspace = EmbulkTests.readResource(RESOURCE_PATH + "create_keyspace.cql");
         String createTableBasic = EmbulkTests.readResource(RESOURCE_PATH + "create_table_test_basic.cql");
         String createTableUuid = EmbulkTests.readResource(RESOURCE_PATH + "create_table_test_uuid.cql");
@@ -122,7 +102,6 @@ public class TestCassandraOutputPlugin
     public void teardown()
     {
         session.close();
-        cluster.close();
     }
 
     private ConfigSource loadYamlResource(String filename)
@@ -136,6 +115,7 @@ public class TestCassandraOutputPlugin
         Path input = getInputPath("test1.csv");
         ConfigSource config = loadYamlResource("test_basic.yaml");
         config.set("hosts", getCassandraHostAsList());
+        config.set("port", getCassandraPort());
 
         assertEquals(0, session.execute("SELECT * FROM embulk_test.test_basic").all().size());
 
@@ -150,22 +130,23 @@ public class TestCassandraOutputPlugin
         assertEquals(1, row1.getInt("int32_item"));
         assertEquals(2, row1.getShort("smallint_item"));
         assertTrue(row1.getBool("boolean_item"));
-        assertEquals(createDate(2018, 7, 1, 10, 0, 0, 0), row1.getTimestamp("timestamp_item"));
+        assertEquals(createInstant(2018, 7, 1, 10, 0, 0, 0), row1.getInstant("timestamp_item"));
         assertEquals("A002", row2.getString("id"));
         assertEquals(0, row2.getLong("int_item"));
         assertEquals(0, row2.getInt("int32_item"));
         assertEquals(4, row2.getShort("smallint_item"));
         assertTrue(row2.getBool("boolean_item"));
-        assertEquals(createDate(2018, 7, 1, 10, 0, 1, 0), row2.getTimestamp("timestamp_item"));
+        assertEquals(createInstant(2018, 7, 1, 10, 0, 1, 0), row2.getInstant("timestamp_item"));
         assertEquals("A003", row3.getString("id"));
         assertEquals(9, row3.getLong("int_item"));
         assertEquals(0, row3.getInt("int32_item"));
         assertEquals(8, row3.getShort("smallint_item"));
         assertFalse(row3.getBool("boolean_item"));
-        assertEquals(createDate(2018, 7, 1, 10, 0, 2, 0), row3.getTimestamp("timestamp_item"));
+        assertEquals(createInstant(2018, 7, 1, 10, 0, 2, 0), row3.getInstant("timestamp_item"));
 
         ConfigSource deleteConfig = loadYamlResource("test_delete.yaml");
         deleteConfig.set("hosts", getCassandraHostAsList());
+        deleteConfig.set("port", getCassandraPort());
         result = embulk.runOutput(deleteConfig, input);
 
         assertEquals(3, result.getOutputTaskReports().get(0).get(Long.class, "inserted_record_count").longValue());
@@ -179,6 +160,7 @@ public class TestCassandraOutputPlugin
         Path input = getInputPath("test1.csv");
         ConfigSource config = loadYamlResource("test_counter.yaml");
         config.set("hosts", getCassandraHostAsList());
+        config.set("port", getCassandraPort());
 
         assertEquals(0, session.execute("SELECT * FROM embulk_test.test_counter").all().size());
 
@@ -195,19 +177,19 @@ public class TestCassandraOutputPlugin
         assertEquals(1, row1.getInt("int32_item"));
         assertEquals(2, row1.getShort("smallint_item"));
         assertTrue(row1.getBool("boolean_item"));
-        assertEquals(createDate(2018, 7, 1, 10, 0, 0, 0), row1.getTimestamp("timestamp_item"));
+        assertEquals(createInstant(2018, 7, 1, 10, 0, 0, 0), row1.getInstant("timestamp_item"));
         assertEquals("A002", row2.getString("id"));
         assertEquals(0, row2.getLong("int_item"));
         assertEquals(0, row2.getInt("int32_item"));
         assertEquals(4, row2.getShort("smallint_item"));
         assertTrue(row2.getBool("boolean_item"));
-        assertEquals(createDate(2018, 7, 1, 10, 0, 1, 0), row2.getTimestamp("timestamp_item"));
+        assertEquals(createInstant(2018, 7, 1, 10, 0, 1, 0), row2.getInstant("timestamp_item"));
         assertEquals("A003", row3.getString("id"));
         assertEquals(9, row3.getLong("int_item"));
         assertEquals(0, row3.getInt("int32_item"));
         assertEquals(8, row3.getShort("smallint_item"));
         assertFalse(row3.getBool("boolean_item"));
-        assertEquals(createDate(2018, 7, 1, 10, 0, 2, 0), row3.getTimestamp("timestamp_item"));
+        assertEquals(createInstant(2018, 7, 1, 10, 0, 2, 0), row3.getInstant("timestamp_item"));
     }
 
     @Test
@@ -216,6 +198,7 @@ public class TestCassandraOutputPlugin
         Path input = getInputPath("test1.csv");
         ConfigSource config = loadYamlResource("test_basic.yaml");
         config.set("hosts", getCassandraHostAsList());
+        config.set("port", getCassandraPort());
         config.set("ttl", 30);
 
         assertEquals(0, session.execute("SELECT * FROM embulk_test.test_basic").all().size());
@@ -227,13 +210,13 @@ public class TestCassandraOutputPlugin
         Row row3 = session.execute("SELECT * FROM embulk_test.test_basic WHERE id = 'A003'").one();
         assertEquals("A001", row1.getString("id"));
         assertEquals(9, row1.getLong("int_item"));
-        assertEquals(createDate(2018, 7, 1, 10, 0, 0, 0), row1.getTimestamp("timestamp_item"));
+        assertEquals(createInstant(2018, 7, 1, 10, 0, 0, 0), row1.getInstant("timestamp_item"));
         assertEquals("A002", row2.getString("id"));
         assertEquals(0, row2.getLong("int_item"));
-        assertEquals(createDate(2018, 7, 1, 10, 0, 1, 0), row2.getTimestamp("timestamp_item"));
+        assertEquals(createInstant(2018, 7, 1, 10, 0, 1, 0), row2.getInstant("timestamp_item"));
         assertEquals("A003", row3.getString("id"));
         assertEquals(9, row3.getLong("int_item"));
-        assertEquals(createDate(2018, 7, 1, 10, 0, 2, 0), row3.getTimestamp("timestamp_item"));
+        assertEquals(createInstant(2018, 7, 1, 10, 0, 2, 0), row3.getInstant("timestamp_item"));
     }
 
     @Test
@@ -242,6 +225,7 @@ public class TestCassandraOutputPlugin
         Path input = getInputPath("test1.csv");
         ConfigSource config = loadYamlResource("test_basic.yaml");
         config.set("hosts", getCassandraHostAsList());
+        config.set("port", getCassandraPort());
         config.set("if_not_exists", true);
 
         assertEquals(0, session.execute("SELECT * FROM embulk_test.test_basic").all().size());
@@ -253,13 +237,13 @@ public class TestCassandraOutputPlugin
         Row row3 = session.execute("SELECT * FROM embulk_test.test_basic WHERE id = 'A003'").one();
         assertEquals("A001", row1.getString("id"));
         assertEquals(9, row1.getLong("int_item"));
-        assertEquals(createDate(2018, 7, 1, 10, 0, 0, 0), row1.getTimestamp("timestamp_item"));
+        assertEquals(createInstant(2018, 7, 1, 10, 0, 0, 0), row1.getInstant("timestamp_item"));
         assertEquals("A002", row2.getString("id"));
         assertEquals(0, row2.getLong("int_item"));
-        assertEquals(createDate(2018, 7, 1, 10, 0, 1, 0), row2.getTimestamp("timestamp_item"));
+        assertEquals(createInstant(2018, 7, 1, 10, 0, 1, 0), row2.getInstant("timestamp_item"));
         assertEquals("A003", row3.getString("id"));
         assertEquals(9, row3.getLong("int_item"));
-        assertEquals(createDate(2018, 7, 1, 10, 0, 2, 0), row3.getTimestamp("timestamp_item"));
+        assertEquals(createInstant(2018, 7, 1, 10, 0, 2, 0), row3.getInstant("timestamp_item"));
     }
 
     @Test
@@ -268,14 +252,15 @@ public class TestCassandraOutputPlugin
         Path input = getInputPath("test2.csv");
         ConfigSource config = loadYamlResource("test_uuid.yaml");
         config.set("hosts", getCassandraHostAsList());
+        config.set("port", getCassandraPort());
         embulk.runOutput(config, input);
 
         Row row1 = session.execute("SELECT * FROM embulk_test.test_uuid").one();
-        assertNotNull(row1.getUUID("id"));
+        assertNotNull(row1.getUuid("id"));
         assertEquals(9, row1.getLong("int_item"));
-        assertEquals(createDate(2018, 7, 1, 10, 0, 0, 0), row1.getTimestamp("timestamp_item"));
-        assertNotNull(row1.getUUID("timeuuid_item"));
-        assertTrue(UUIDs.unixTimestamp(row1.getUUID("timeuuid_item")) < ZonedDateTime.now().toInstant().toEpochMilli());
+        assertEquals(createInstant(2018, 7, 1, 10, 0, 0, 0), row1.getInstant("timestamp_item"));
+        assertNotNull(row1.getUuid("timeuuid_item"));
+        assertTrue(Uuids.unixTimestamp(row1.getUuid("timeuuid_item")) < ZonedDateTime.now().toInstant().toEpochMilli());
     }
 
     @Test
@@ -284,6 +269,7 @@ public class TestCassandraOutputPlugin
         Path input = getInputPath("test1.csv");
         ConfigSource config = loadYamlResource("test_basic.yaml");
         config.set("hosts", getCassandraHostAsList());
+        config.set("port", getCassandraPort());
         config.set("mode", "update");
 
         assertEquals(0, session.execute("SELECT * FROM embulk_test.test_basic").all().size());
@@ -295,13 +281,13 @@ public class TestCassandraOutputPlugin
         Row row3 = session.execute("SELECT * FROM embulk_test.test_basic WHERE id = 'A003'").one();
         assertEquals("A001", row1.getString("id"));
         assertEquals(9, row1.getLong("int_item"));
-        assertEquals(createDate(2018, 7, 1, 10, 0, 0, 0), row1.getTimestamp("timestamp_item"));
+        assertEquals(createInstant(2018, 7, 1, 10, 0, 0, 0), row1.getInstant("timestamp_item"));
         assertEquals("A002", row2.getString("id"));
         assertEquals(0, row2.getLong("int_item"));
-        assertEquals(createDate(2018, 7, 1, 10, 0, 1, 0), row2.getTimestamp("timestamp_item"));
+        assertEquals(createInstant(2018, 7, 1, 10, 0, 1, 0), row2.getInstant("timestamp_item"));
         assertEquals("A003", row3.getString("id"));
         assertEquals(9, row3.getLong("int_item"));
-        assertEquals(createDate(2018, 7, 1, 10, 0, 2, 0), row3.getTimestamp("timestamp_item"));
+        assertEquals(createInstant(2018, 7, 1, 10, 0, 2, 0), row3.getInstant("timestamp_item"));
     }
 
     @Test
@@ -310,6 +296,7 @@ public class TestCassandraOutputPlugin
         Path input = getInputPath("test1.csv");
         ConfigSource config = loadYamlResource("test_basic.yaml");
         config.set("hosts", getCassandraHostAsList());
+        config.set("port", getCassandraPort());
         config.set("mode", "update");
         config.set("if_exists", true);
 
@@ -323,7 +310,7 @@ public class TestCassandraOutputPlugin
         Row row3 = session.execute("SELECT * FROM embulk_test.test_basic WHERE id = 'A003'").one();
         assertEquals("A001", row1.getString("id"));
         assertEquals(9, row1.getLong("int_item"));
-        assertEquals(createDate(2018, 7, 1, 10, 0, 0, 0), row1.getTimestamp("timestamp_item"));
+        assertEquals(createInstant(2018, 7, 1, 10, 0, 0, 0), row1.getInstant("timestamp_item"));
         assertNull(row2);
         assertNull(row3);
     }
@@ -334,28 +321,29 @@ public class TestCassandraOutputPlugin
         Path input = getInputPath("test3.csv");
         ConfigSource config = loadYamlResource("test_complex.yaml");
         config.set("hosts", getCassandraHostAsList());
+        config.set("port", getCassandraPort());
         embulk.runOutput(config, input);
 
         Row row1 = session.execute("SELECT * FROM embulk_test.test_complex").one();
-        assertNotNull(row1.getUUID("id"));
-        assertEquals(BigDecimal.valueOf(10), row1.getDecimal("decimal_item"));
-        assertEquals(LocalDate.fromYearMonthDay(2018, 7, 1), row1.getDate("date_item"));
-        assertEquals(3600L * 10 * 1000 * 1000 * 1000, row1.getTime("time_item"));
+        assertNotNull(row1.getUuid("id"));
+        assertEquals(BigDecimal.valueOf(10), row1.getBigDecimal("decimal_item"));
+        assertEquals(LocalDate.of(2018, 7, 1), row1.getLocalDate("date_item"));
+        assertEquals(LocalTime.of(10, 0), row1.getLocalTime("time_item"));
 
         List<String> list = row1.getList("list_item", String.class);
-        assertArrayEquals(new String[] {"foo", "bar"}, list.toArray());
+        assertArrayEquals(new String[]{"foo", "bar"}, list.toArray());
 
         Map<String, Long> map = row1.getMap("map_item", String.class, Long.class);
         assertEquals(1L, map.get("key1").longValue());
 
         Set<Long> set = row1.getSet("set_item", Long.class);
-        assertArrayEquals(new Long[] {1L, 2L, 3L}, set.toArray());
+        assertArrayEquals(new Long[]{1L, 2L, 3L}, set.toArray());
 
-        InetAddress inet = row1.getInet("inet_item");
+        InetAddress inet = row1.getInetAddress("inet_item");
         assertEquals(InetAddress.getByName("127.0.0.1"), inet);
 
         TupleValue tuple = row1.getTupleValue("tuple_item");
-        TupleType tupleType = cluster.getMetadata().newTupleType(DataType.text(), DataType.cdouble());
+        TupleType tupleType = DataTypes.tupleOf(DataTypes.TEXT, DataTypes.DOUBLE);
         assertEquals(tupleType.newValue("foo", 1.1), tuple);
     }
 
@@ -364,8 +352,8 @@ public class TestCassandraOutputPlugin
         return new File(this.getClass().getResource(RESOURCE_PATH + filename).getFile()).toPath();
     }
 
-    private Date createDate(int year, int month, int day, int hour, int min, int sec, int nsec)
+    private Instant createInstant(int year, int month, int day, int hour, int min, int sec, int nsec)
     {
-        return Date.from(ZonedDateTime.of(year, month, day, hour, min, sec, nsec, ZoneId.of("UTC")).toInstant());
+        return Instant.from(ZonedDateTime.of(year, month, day, hour, min, sec, nsec, ZoneId.of("UTC")));
     }
 }

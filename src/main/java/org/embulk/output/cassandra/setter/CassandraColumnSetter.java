@@ -1,9 +1,10 @@
 package org.embulk.output.cassandra.setter;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.ColumnMetadata;
-import org.embulk.spi.time.Timestamp;
-import org.msgpack.value.Value;
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
+import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
+import org.embulk.spi.json.JsonValue;
+
+import java.time.Instant;
 
 public abstract class CassandraColumnSetter
 {
@@ -14,37 +15,37 @@ public abstract class CassandraColumnSetter
         this.cassandraColumn = cassandraColumn;
     }
 
-    public void setBooleanValue(Boolean value, BoundStatement statement)
+    public void setBooleanValue(Boolean value, BoundStatementBuilder statement)
     {
-        throw new RuntimeException("Unsupported type conversion: " + value.getClass().getName() + " -> " + cassandraColumn.getType().getName());
+        throw new RuntimeException("Unsupported type conversion: " + value.getClass().getName() + " -> " + cassandraColumn.getName());
     };
 
-    public void setLongValue(Long value, BoundStatement statement)
+    public void setLongValue(Long value, BoundStatementBuilder statement)
     {
-        throw new RuntimeException("Unsupported type conversion: " + value.getClass().getName() + " -> " + cassandraColumn.getType().getName());
+        throw new RuntimeException("Unsupported type conversion: " + value.getClass().getName() + " -> " + cassandraColumn.getName());
     };
 
-    public void setDoubleValue(Double value, BoundStatement statement)
+    public void setDoubleValue(Double value, BoundStatementBuilder statement)
     {
-        throw new RuntimeException("Unsupported type conversion: " + value.getClass().getName() + " -> " + cassandraColumn.getType().getName());
+        throw new RuntimeException("Unsupported type conversion: " + value.getClass().getName() + " -> " + cassandraColumn.getName());
     };
 
-    public void setStringValue(String value, BoundStatement statement)
+    public void setStringValue(String value, BoundStatementBuilder statement)
     {
-        throw new RuntimeException("Unsupported type conversion: " + value.getClass().getName() + " -> " + cassandraColumn.getType().getName());
+        throw new RuntimeException("Unsupported type conversion: " + value.getClass().getName() + " -> " + cassandraColumn.getName());
     };
 
-    public void setTimestampValue(Timestamp value, BoundStatement statement)
+    public void setTimestampValue(Instant value, BoundStatementBuilder statement)
     {
-        throw new RuntimeException("Unsupported type conversion: " + value.getClass().getName() + " -> " + cassandraColumn.getType().getName());
+        throw new RuntimeException("Unsupported type conversion: " + value.getClass().getName() + " -> " + cassandraColumn.getName());
     };
 
-    public void setJsonValue(Value value, BoundStatement statement)
+    public void setJsonValue(JsonValue value, BoundStatementBuilder statement)
     {
-        throw new RuntimeException("Unsupported type conversion: " + value.getClass().getName() + " -> " + cassandraColumn.getType().getName());
+        throw new RuntimeException("Unsupported type conversion: " + value.getClass().getName() + " -> " + cassandraColumn.getName());
     };
 
-    public void setNullValue(BoundStatement statement)
+    public void setNullValue(BoundStatementBuilder statement)
     {
         statement.setToNull(cassandraColumn.getName());
     }

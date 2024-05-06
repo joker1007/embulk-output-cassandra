@@ -1,9 +1,9 @@
 package org.embulk.output.cassandra.setter;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.ColumnMetadata;
-import org.embulk.spi.time.Timestamp;
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
+import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
 
+import java.time.Instant;
 import java.util.Date;
 
 public class TimestampColumnSetter extends CassandraColumnSetter
@@ -14,29 +14,28 @@ public class TimestampColumnSetter extends CassandraColumnSetter
     }
 
     @Override
-    public void setLongValue(Long value, BoundStatement statement)
+    public void setLongValue(Long value, BoundStatementBuilder statement)
     {
-        Date time = new Date(value * 1000);
-        statement.setTimestamp(cassandraColumn.getName(), time);
+        statement.setInstant(cassandraColumn.getName(), Instant.ofEpochSecond(value));
     }
 
     @Override
-    public void setDoubleValue(Double value, BoundStatement statement)
+    public void setDoubleValue(Double value, BoundStatementBuilder statement)
     {
-        Date time = new Date(value.longValue() * 1000);
-        statement.setTimestamp(cassandraColumn.getName(), time);
+        long longValue = value.longValue();
+        long nanoSecond = Math.round((value - longValue) * 1_000_000_000);
+        statement.setInstant(cassandraColumn.getName(), Instant.ofEpochSecond(longValue, nanoSecond));
     }
 
     @Override
-    public void setStringValue(String value, BoundStatement statement)
+    public void setStringValue(String value, BoundStatementBuilder statement)
     {
         statement.setString(cassandraColumn.getName(), value);
     }
 
     @Override
-    public void setTimestampValue(Timestamp value, BoundStatement statement)
+    public void setTimestampValue(Instant value, BoundStatementBuilder statement)
     {
-        Date time = new Date(value.toEpochMilli());
-        statement.setTimestamp(cassandraColumn.getName(), time);
+        statement.setInstant(cassandraColumn.getName(), value);
     }
 }
