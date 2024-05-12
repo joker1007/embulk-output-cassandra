@@ -1,21 +1,38 @@
+import com.datastax.oss.driver.api.core.CqlSession
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.datastax.oss:java-driver-core:4.17.0"
+    }
+}
+
 plugins {
-    id "org.embulk.embulk-plugins" version "0.5.5"
+    id "org.embulk.embulk-plugins" version "0.7.0"
     id "maven-publish"
     id "java"
+    id "signing"
     id "checkstyle"
 }
+
 repositories {
     mavenCentral()
-    jcenter()
 }
 
 group = "org.embulk.output.cassandra"
 version = "0.5.0"
 description = "Cassandra output plugin for Embulk"
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
 
+    withJavadocJar()
+    withSourcesJar()
+}
 
 embulkPlugin {
     mainClass = "org.embulk.output.cassandra.CassandraOutputPlugin"
@@ -25,48 +42,22 @@ embulkPlugin {
 
 dependencies {
     compileOnly "org.embulk:embulk-spi:0.11"
-    implementation("com.datastax.cassandra:cassandra-driver-core:3.10.+") {
-        exclude module: 'netty-buffer'
-        exclude module: 'netty-codec'
-        exclude module: 'netty-common'
-        exclude module: 'netty-handler'
-        exclude module: 'netty-transport'
-        exclude module: 'slf4j-api'
-        exclude module: 'jackson-databind'
-        exclude module: 'jackson-core'
-    }
-    implementation  "io.netty:netty-common:4.0.44.Final"
-    implementation  "io.netty:netty-buffer:4.0.44.Final"
+    implementation("com.datastax.oss:java-driver-core:4.17.0")
+    implementation("com.datastax.oss:java-driver-query-builder:4.17.0")
 
-    implementation  "io.netty:netty-codec:4.0.44.Final"
-    implementation  "io.netty:netty-handler:4.0.44.Final"
-    implementation  "io.netty:netty-transport:4.0.44.Final"
-
-    implementation("org.embulk:embulk-util-config:0.3.4") {
-        exclude group: "com.fasterxml.jackson.core", module: "jackson-annotations"
-        exclude group: "com.fasterxml.jackson.core", module: "jackson-core"
-        exclude group: "com.fasterxml.jackson.core", module: "jackson-databind"
-        exclude group: "com.fasterxml.jackson.datatype", module: "jackson-datatype-jdk8"
-        exclude group: "javax.validation", module: "validation-api"
-    }
-
-    implementation "com.fasterxml.jackson.core:jackson-annotations:2.6.7"
-    implementation "com.fasterxml.jackson.core:jackson-core:2.6.7"
-    implementation "com.fasterxml.jackson.core:jackson-databind:2.6.7"
-    implementation "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.6.7"
-    implementation "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.6.7"
+    implementation("org.embulk:embulk-util-config:0.5.0")
 
     testImplementation "junit:junit:4.+"
     testImplementation "org.embulk:embulk-spi:0.11"
-    testImplementation "org.embulk:embulk-core:0.11.0"
-    testImplementation "org.embulk:embulk-junit4:0.11.0"
+    testImplementation "org.embulk:embulk-core:0.11.3"
+    testImplementation "org.embulk:embulk-junit4:0.11.3"
     testImplementation "org.embulk:embulk-input-file:0.11.0"
     testImplementation "org.embulk:embulk-parser-csv:0.11.0"
-    testImplementation "org.embulk:embulk-deps:0.11.0"
+    testImplementation "org.embulk:embulk-deps:0.11.3"
 
-    testImplementation("org.cassandraunit:cassandra-unit:3.11.2.0") {
-        exclude module: 'guava'
-    }
+
+    testImplementation "org.testcontainers:testcontainers:1.19.7"
+    testImplementation "org.testcontainers:cassandra:1.19.7"
 }
 
 test {
@@ -105,3 +96,88 @@ gemPush {
     host = "https://rubygems.org"
 }
 
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = project.group
+            artifactId = project.name
+
+            // Publish it with "publishEmbulkPluginMavenPublicationToMavenRepository".
+            from components.java  // Must be "components.java". The dependency modification works only for it.
+            pom {
+                name = "embulk-output-cassandra"
+                packaging = "jar"
+                description = "Embulk output plugin for Cassandra"
+                url = "https://github.com/joker1007/embulk-output-cassandra"
+
+                licenses {
+                    license {
+                        // http://central.sonatype.org/pages/requirements.html#license-information
+                        name = "MIT License"
+                        url = "https://opensource.org/licenses/MIT"
+                    }
+                }
+
+                scm {
+                    connection = "scm:git://github.com/joker1007/embulk-output-cassandra.git"
+                    developerConnection = "scm:git@github.com:joker1007/embulk-output-cassandra.git"
+                    url = "https://github.com/joker1007/embulk-output-cassandra"
+                }
+
+                developers {
+                    developer {
+                        id = "joker1007"
+                        name = "Tomohiro Hashidate"
+                        email = "kakyoin.hierophant@gmail.com"
+                    }
+                }
+            }
+        }
+    }
+    repositories {
+        maven {  // publishMavenPublicationToMavenCentralRepository
+            name = "mavenCentral"
+            if (project.version.endsWith("-SNAPSHOT")) {
+                url "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+            } else {
+                url "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+            }
+
+            credentials {
+                username = project.hasProperty("ossrhUsername") ? ossrhUsername : ""
+                password = project.hasProperty("ossrhPassword") ? ossrhPassword : ""
+            }
+        }
+    }
+}
+
+signing {
+    useGpgCmd()
+    sign publishing.publications.maven
+}
+
+tasks.withType(Sign) {
+    onlyIf { System.getenv().get("SKIP_SIGNING") == null }
+}
+
+task generateEmbulkProperties {
+    doLast {
+        mkdir ".embulk"
+        def f = file(".embulk/embulk.properties")
+        f.write("m2_repo=${System.properties["user.home"]}/.m2/repository\nplugins.output.cassandra=maven:${project.group}:cassandra:${project.version}")
+    }
+}
+
+task createTestTable {
+    doLast {
+        def session = CqlSession.builder()
+                .addContactPoint(new InetSocketAddress("localhost", 9042))
+                .withLocalDatacenter("datacenter1")
+                .build()
+
+        def keyspaceCql = new File(sourceSets.test.resources.srcDirs[0], "org/embulk/output/cassandra/create_keyspace.cql").text
+        def tableCql = new File(sourceSets.test.resources.srcDirs[0], "org/embulk/output/cassandra/create_table_test_basic.cql").text
+        session.execute(keyspaceCql)
+        session.execute(tableCql)
+    }
+}

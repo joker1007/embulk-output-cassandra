@@ -1,0 +1,4 @@
+id,int_item,int32_item,smallint_item,tinyint_item,boolean_item,varchar_item,timestamp_item,double_item
+A001,9,4294967297,2,0,true,a,2018-07-01 10:00:00.000 UTC,1.1
+A002,0,0,4,0,true,b,2018-07-01 10:00:01.000 UTC,1.2
+A003,9,0,8,1,false,c,2018-07-01 10:00:02.000 UTC,1.3

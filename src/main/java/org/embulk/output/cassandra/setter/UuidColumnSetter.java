@@ -1,8 +1,9 @@
 package org.embulk.output.cassandra.setter;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.ColumnMetadata;
-import com.datastax.driver.core.utils.UUIDs;
+
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
+import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
+import com.datastax.oss.driver.api.core.uuid.Uuids;
 
 public class UuidColumnSetter extends CassandraColumnSetter
 {
@@ -11,8 +12,9 @@ public class UuidColumnSetter extends CassandraColumnSetter
         super(cassandraColumn);
     }
 
-    public void setNullValue(BoundStatement statement)
+    @Override
+    public void setNullValue(BoundStatementBuilder statement)
     {
-        statement.setUUID(cassandraColumn.getName(), UUIDs.random());
+        statement.setUuid(cassandraColumn.getName(), Uuids.random());
     }
 }

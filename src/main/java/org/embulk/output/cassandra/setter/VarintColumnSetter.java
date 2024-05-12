@@ -1,7 +1,8 @@
 package org.embulk.output.cassandra.setter;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.ColumnMetadata;
+
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
+import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
 
 import java.math.BigInteger;
 
@@ -13,31 +14,31 @@ public class VarintColumnSetter extends CassandraColumnSetter
     }
 
     @Override
-    public void setBooleanValue(Boolean value, BoundStatement statement)
+    public void setBooleanValue(Boolean value, BoundStatementBuilder statement)
     {
         if (value) {
-            statement.setVarint(cassandraColumn.getName(), BigInteger.ONE);
+            statement.setBigInteger(cassandraColumn.getName(), BigInteger.ONE);
         }
         else {
-            statement.setVarint(cassandraColumn.getName(), BigInteger.ZERO);
+            statement.setBigInteger(cassandraColumn.getName(), BigInteger.ZERO);
         }
     }
 
     @Override
-    public void setLongValue(Long value, BoundStatement statement)
+    public void setLongValue(Long value, BoundStatementBuilder statement)
     {
-        statement.setVarint(cassandraColumn.getName(), BigInteger.valueOf(value));
+        statement.setBigInteger(cassandraColumn.getName(), BigInteger.valueOf(value));
     }
 
     @Override
-    public void setDoubleValue(Double value, BoundStatement statement)
+    public void setDoubleValue(Double value, BoundStatementBuilder statement)
     {
-        statement.setVarint(cassandraColumn.getName(), BigInteger.valueOf(value.longValue()));
+        statement.setBigInteger(cassandraColumn.getName(), BigInteger.valueOf(value.longValue()));
     }
 
     @Override
-    public void setStringValue(String value, BoundStatement statement)
+    public void setStringValue(String value, BoundStatementBuilder statement)
     {
-        statement.setVarint(cassandraColumn.getName(), new BigInteger(value));
+        statement.setBigInteger(cassandraColumn.getName(), new BigInteger(value));
     }
 }

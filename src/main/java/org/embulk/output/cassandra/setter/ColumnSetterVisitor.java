@@ -1,6 +1,6 @@
 package org.embulk.output.cassandra.setter;
 
-import com.datastax.driver.core.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
 import org.embulk.spi.Column;
 import org.embulk.spi.ColumnVisitor;
 import org.embulk.spi.PageReader;
@@ -12,7 +12,7 @@ public class ColumnSetterVisitor implements ColumnVisitor
     private final boolean isPkey;
     private final boolean isDelete;
 
-    private BoundStatement statement;
+    private BoundStatementBuilder statementBuilder;
 
     public ColumnSetterVisitor(PageReader pageReader, CassandraColumnSetter setter, boolean isPkey, boolean isDelete)
     {
@@ -27,9 +27,9 @@ public class ColumnSetterVisitor implements ColumnVisitor
         return this.setter != null;
     }
 
-    public void setStatement(BoundStatement statement)
+    public void setStatementBuilder(BoundStatementBuilder statementBuilder)
     {
-        this.statement = statement;
+        this.statementBuilder = statementBuilder;
     }
 
     @Override
@@ -40,10 +40,10 @@ public class ColumnSetterVisitor implements ColumnVisitor
         }
 
         if (pageReader.isNull(column)) {
-            setter.setNullValue(statement);
+            setter.setNullValue(statementBuilder);
         }
         else {
-            setter.setBooleanValue(pageReader.getBoolean(column), statement);
+            setter.setBooleanValue(pageReader.getBoolean(column), statementBuilder);
         }
     }
 
@@ -55,10 +55,10 @@ public class ColumnSetterVisitor implements ColumnVisitor
         }
 
         if (pageReader.isNull(column)) {
-            setter.setNullValue(statement);
+            setter.setNullValue(statementBuilder);
         }
         else {
-            setter.setLongValue(pageReader.getLong(column), statement);
+            setter.setLongValue(pageReader.getLong(column), statementBuilder);
         }
     }
 
@@ -70,10 +70,10 @@ public class ColumnSetterVisitor implements ColumnVisitor
         }
 
         if (pageReader.isNull(column)) {
-            setter.setNullValue(statement);
+            setter.setNullValue(statementBuilder);
         }
         else {
-            setter.setDoubleValue(pageReader.getDouble(column), statement);
+            setter.setDoubleValue(pageReader.getDouble(column), statementBuilder);
         }
     }
 
@@ -85,10 +85,10 @@ public class ColumnSetterVisitor implements ColumnVisitor
         }
 
         if (pageReader.isNull(column)) {
-            setter.setNullValue(statement);
+            setter.setNullValue(statementBuilder);
         }
         else {
-            setter.setStringValue(pageReader.getString(column), statement);
+            setter.setStringValue(pageReader.getString(column), statementBuilder);
         }
     }
 
@@ -100,10 +100,10 @@ public class ColumnSetterVisitor implements ColumnVisitor
         }
 
         if (pageReader.isNull(column)) {
-            setter.setNullValue(statement);
+            setter.setNullValue(statementBuilder);
         }
         else {
-            setter.setTimestampValue(pageReader.getTimestamp(column), statement);
+            setter.setTimestampValue(pageReader.getTimestampInstant(column), statementBuilder);
         }
     }
 
@@ -115,10 +115,10 @@ public class ColumnSetterVisitor implements ColumnVisitor
         }
 
         if (pageReader.isNull(column)) {
-            setter.setNullValue(statement);
+            setter.setNullValue(statementBuilder);
         }
         else {
-            setter.setJsonValue(pageReader.getJson(column), statement);
+            setter.setJsonValue(pageReader.getJsonValue(column), statementBuilder);
         }
     }
 }
