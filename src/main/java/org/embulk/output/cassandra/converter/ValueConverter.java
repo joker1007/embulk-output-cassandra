@@ -39,6 +39,8 @@ public class ValueConverter {
         return GenericType.BIG_DECIMAL;
       } else if (dataType.equals(DataTypes.DOUBLE)) {
         return GenericType.DOUBLE;
+      } else if (dataType.equals(DataTypes.DURATION)) {
+        return GenericType.CQL_DURATION;
       } else if (dataType.equals(DataTypes.FLOAT)) {
         return GenericType.FLOAT;
       } else if (dataType.equals(DataTypes.INET)) {
@@ -49,6 +51,8 @@ public class ValueConverter {
         return GenericType.SHORT;
       } else if (dataType.equals(DataTypes.TEXT)) {
         return GenericType.STRING;
+      } else if (dataType.equals(DataTypes.TINYINT)) {
+        return GenericType.BYTE;
       } else if (dataType.equals(DataTypes.TIMESTAMP)) {
         return GenericType.INSTANT;
       } else if (dataType.equals(DataTypes.TIMEUUID)) {
@@ -144,6 +148,8 @@ public class ValueConverter {
       return Converters.DECIMAL.convertJsonValue(dataType, value);
     } else if (dataType.equals(DataTypes.DOUBLE)) {
       return Converters.DOUBLE.convertJsonValue(dataType, value);
+    } else if (dataType.equals(DataTypes.DURATION)) {
+      return Converters.DURATION.convertJsonValue(dataType, value);
     } else if (dataType.equals(DataTypes.FLOAT)) {
       return Converters.FLOAT.convertJsonValue(dataType, value);
     } else if (dataType.equals(DataTypes.INET)) {
@@ -154,6 +160,8 @@ public class ValueConverter {
       return Converters.SMALLINT.convertJsonValue(dataType, value);
     } else if (dataType.equals(DataTypes.TEXT)) {
       return Converters.STRING.convertJsonValue(dataType, value);
+    } else if (dataType.equals(DataTypes.TINYINT)) {
+      return Converters.TINYINT.convertJsonValue(dataType, value);
     } else if (dataType.equals(DataTypes.TIMESTAMP)) {
       return Converters.TIMESTAMP.convertJsonValue(dataType, value);
     } else if (dataType.equals(DataTypes.TIMEUUID)) {

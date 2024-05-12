@@ -36,6 +36,8 @@ public class CassandraColumnSetterFactory {
       return new DateColumnSetter(cassandraColumn);
     } else if (type.equals(DataTypes.TIME)) {
       return new TimeColumnSetter(cassandraColumn);
+    } else if (type.equals(DataTypes.DURATION)) {
+      return new DurationColumnSetter(cassandraColumn);
     } else if (type.equals(DataTypes.UUID)) {
       return new UuidColumnSetter(cassandraColumn);
     } else if (type.equals(DataTypes.TIMEUUID)) {

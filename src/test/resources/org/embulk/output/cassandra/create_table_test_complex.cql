@@ -10,5 +10,6 @@ CREATE TABLE IF NOT EXISTS embulk_test.test_complex (
   set_item set<bigint>,
   inet_item inet,
   tuple_item tuple<text, double>,
+  duration_item duration,
   primary key (id)
 ) WITH compaction = { 'class' : 'SizeTieredCompactionStrategy' };
