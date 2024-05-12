@@ -14,7 +14,7 @@ plugins {
     id "maven-publish"
     id "java"
     id "signing"
-    id "checkstyle"
+    id("com.diffplug.spotless") version "6.25.0"
 }
 
 repositories {
@@ -65,18 +65,6 @@ test {
     maxHeapSize = "4g"
 }
 
-checkstyle {
-    configFile = file("${project.rootDir}/config/checkstyle/checkstyle.xml")
-    toolVersion = '6.14.1'
-}
-checkstyleMain {
-    configFile = file("${project.rootDir}/config/checkstyle/default.xml")
-    ignoreFailures = true
-}
-checkstyleTest {
-    configFile = file("${project.rootDir}/config/checkstyle/default.xml")
-    ignoreFailures = true
-}
 task checkstyle(type: Checkstyle) {
     classpath = sourceSets.main.output + sourceSets.test.output
     source = sourceSets.main.allJava + sourceSets.test.allJava
@@ -180,4 +168,17 @@ task createTestTable {
         session.execute(keyspaceCql)
         session.execute(tableCql)
     }
+}
+
+spotless {
+    java {
+        importOrder()
+        removeUnusedImports()
+
+        googleJavaFormat()
+    }
+}
+
+tasks.compileJava {
+    dependsOn(tasks.spotlessApply)
 }
