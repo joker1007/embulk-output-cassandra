@@ -7,24 +7,19 @@ import com.datastax.oss.driver.api.core.type.TupleType;
 import org.embulk.output.cassandra.converter.ValueConverter;
 import org.embulk.spi.json.JsonValue;
 
-import java.util.List;
+public class TupleColumnSetter extends CassandraColumnSetter {
+  public TupleColumnSetter(ColumnMetadata cassandraColumn) {
+    super(cassandraColumn);
+  }
 
-public class TupleColumnSetter extends CassandraColumnSetter
-{
-    public TupleColumnSetter(ColumnMetadata cassandraColumn)
-    {
-        super(cassandraColumn);
+  @Override
+  public void setJsonValue(JsonValue value, BoundStatementBuilder statement) {
+    if (!value.isJsonArray()) {
+      throw new RuntimeException(value.toJson() + " is not array value");
     }
 
-    @Override
-    public void setJsonValue(JsonValue value, BoundStatementBuilder statement)
-    {
-        if (!value.isJsonArray()) {
-            throw new RuntimeException(value.toJson() + " is not array value");
-        }
-
-        TupleType tupleType = (TupleType) cassandraColumn.getType();
-        TupleValue tupleValue = ValueConverter.convertToTupleValue(tupleType, value);
-        statement.setTupleValue(cassandraColumn.getName(), tupleValue);
-    }
+    TupleType tupleType = (TupleType) cassandraColumn.getType();
+    TupleValue tupleValue = ValueConverter.convertToTupleValue(tupleType, value);
+    statement.setTupleValue(cassandraColumn.getName(), tupleValue);
+  }
 }
