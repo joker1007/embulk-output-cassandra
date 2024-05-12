@@ -2,6 +2,9 @@ name: Java CI
 
 on: [push]
 
+env:
+  SKIP_SIGNING: true
+
 jobs:
   build:
 
@@ -9,23 +12,35 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set up JDK 1.8
-      uses: actions/setup-java@v1
+    - name: Set up JDK
+      uses: actions/setup-java@v4
       with:
-        java-version: 1.8
-    - name: Cache Gradle packages
-      uses: actions/cache@v2
-      with:
-        path: ~/.gradle/caches
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
-        restore-keys: ${{ runner.os }}-gradle
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+        distribution: temurin
+        java-version: '8'
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+    - name: Setup Maven Action
+      uses: s4u/setup-maven-action@v1.12.0
+    - run: docker ps
+    - name: Download Embulk
+      run: curl -o /tmp/embulk.jar -L https://dl.embulk.org/embulk-0.11.3.jar
     - name: Build with Gradle
-      run: ./gradlew test
+      run: ./gradlew publishToMavenLocal
+    - name: Copy pom.xml
+      run: cp build/publications/maven/pom-default.xml pom.xml
+    - name: Resolve Maven Dependencies
+      run: mvn dependency:resolve
+    - name: Generate Embulk Properties
+      run: ./gradlew generateEmbulkProperties
+    - name: Setup Cassandra
+      run: ./gradlew createTestTable
+    - name: Run Embulk
+      run: java -jar /tmp/embulk.jar run config_acceptance.yaml
+      working-directory: src/test/resources/org/embulk/output/cassandra
 
     services:
       cassandra:
-        image: cassandra:latest
+        image: cassandra:4.1
         ports:
           - 9042:9042
+        options: --health-cmd "cqlsh --debug" --health-interval 10s --health-retries 10

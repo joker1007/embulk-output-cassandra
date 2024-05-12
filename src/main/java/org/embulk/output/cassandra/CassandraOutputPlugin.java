@@ -286,7 +286,7 @@ public class CassandraOutputPlugin
 
         task.getLocalDatacenterName().ifPresent(builder::withLocalDatacenter);
 
-        DriverConfigLoader loader = DriverConfigLoader.programmaticBuilder()
+        DriverConfigLoader loader = DriverConfigLoader.programmaticBuilder(this.getClass().getClassLoader())
                 .withString(DefaultDriverOption.LOAD_BALANCING_POLICY_CLASS, task.getLoadBalancingPolicy())
                 .withDuration(DefaultDriverOption.REQUEST_TIMEOUT, Duration.ofMillis(task.getRequestTimeout()))
                 .withDuration(DefaultDriverOption.CONNECTION_INIT_QUERY_TIMEOUT, Duration.ofMillis(task.getConnectTimeout()))

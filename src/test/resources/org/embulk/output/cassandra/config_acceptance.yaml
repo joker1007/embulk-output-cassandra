@@ -1,0 +1,24 @@
+in:
+  type: file
+  path_prefix: test1.csv
+  parser:
+    type: csv
+    skip_header_lines: 1
+    columns:
+      - {name: id, type: string}
+      - {name: int_item, type: long}
+      - {name: int32_item, type: long}
+      - {name: smallint_item, type: long}
+      - {name: tinyint_item, type: long}
+      - {name: boolean_item, type: boolean}
+      - {name: varchar_item, type: string}
+      - {name: timestamp_item, type: timestamp}
+      - {name: double_item, type: double}
+
+out:
+  type: cassandra
+  keyspace: embulk_test
+  table: "test_basic"
+  hosts:
+    - localhost
+  port: 9042
