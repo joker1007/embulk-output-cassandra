@@ -6,6 +6,7 @@ public class Converters {
   public static final BooleanConverter BOOLEAN = new BooleanConverter();
   public static final DecimalConverter DECIMAL = new DecimalConverter();
   public static final DoubleConverter DOUBLE = new DoubleConverter();
+  public static final DurationConverter DURATION = new DurationConverter();
   public static final FloatConverter FLOAT = new FloatConverter();
   public static final InetConverter INET = new InetConverter();
   public static final IntConverter INT = new IntConverter();
