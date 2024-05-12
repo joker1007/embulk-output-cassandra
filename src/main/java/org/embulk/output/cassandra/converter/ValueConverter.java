@@ -49,6 +49,8 @@ public class ValueConverter {
         return GenericType.SHORT;
       } else if (dataType.equals(DataTypes.TEXT)) {
         return GenericType.STRING;
+      } else if (dataType.equals(DataTypes.TINYINT)) {
+        return GenericType.BYTE;
       } else if (dataType.equals(DataTypes.TIMESTAMP)) {
         return GenericType.INSTANT;
       } else if (dataType.equals(DataTypes.TIMEUUID)) {
@@ -154,6 +156,8 @@ public class ValueConverter {
       return Converters.SMALLINT.convertJsonValue(dataType, value);
     } else if (dataType.equals(DataTypes.TEXT)) {
       return Converters.STRING.convertJsonValue(dataType, value);
+    } else if (dataType.equals(DataTypes.TINYINT)) {
+      return Converters.TINYINT.convertJsonValue(dataType, value);
     } else if (dataType.equals(DataTypes.TIMESTAMP)) {
       return Converters.TIMESTAMP.convertJsonValue(dataType, value);
     } else if (dataType.equals(DataTypes.TIMEUUID)) {

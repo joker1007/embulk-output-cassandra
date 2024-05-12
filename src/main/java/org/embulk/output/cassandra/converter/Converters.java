@@ -12,6 +12,7 @@ public class Converters {
   public static final SmallintConverter SMALLINT = new SmallintConverter();
   public static final TimestampConverter TIMESTAMP = new TimestampConverter();
   public static final TimeuuidConverter TIMEUUID = new TimeuuidConverter();
+  public static final TinyintConverter TINYINT = new TinyintConverter();
   public static final UuidConverter UUID = new UuidConverter();
   public static final VarintConverter VARINT = new VarintConverter();
 }
