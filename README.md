@@ -4,6 +4,20 @@
 
 Apache Cassandra output plugin for Embulk.
 
+## Compatibility
+
+| embulk-output-kafka   | embulk                                  | datastax-driver-core  |
+| --------------------- | --------------------------------------- | --------------------- |
+| 0.6.x                 | 0.11.x or later                         | 4.x                   |
+| 0.5.x                 | 0.9.x or later (may not work on 0.11.x) | 3.11.x                |
+
+## Breaking Changes
+
+### 0.6.0
+- `timestamp` column accepts string as Java's ISO_INSTANT format.
+- `timestamp` column accepts long and double as epoch millis. (before: as epoch seconds)
+- `date` column accepts long as days from epoch. (before: not supported)
+
 ## Overview
 
 * **Plugin type**: output
