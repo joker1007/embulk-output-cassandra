@@ -21,7 +21,7 @@ repositories {
     mavenCentral()
 }
 
-group = "org.embulk.output.cassandra"
+group = "io.github.joker1007"
 version = "0.6.0"
 description = "Cassandra output plugin for Embulk"
 
