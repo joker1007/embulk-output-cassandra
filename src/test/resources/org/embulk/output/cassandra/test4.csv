@@ -1,0 +1,2 @@
+id:string,timestamp_item:long,date_item:long,time_item:long
+A001,86400000,1,600000000000

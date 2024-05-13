@@ -35,6 +35,8 @@ public class ValueConverter {
         return GenericType.BOOLEAN;
       } else if (dataType.equals(DataTypes.COUNTER)) {
         return GenericType.LONG;
+      } else if (dataType.equals(DataTypes.DATE)) {
+        return GenericType.LOCAL_DATE;
       } else if (dataType.equals(DataTypes.DECIMAL)) {
         return GenericType.BIG_DECIMAL;
       } else if (dataType.equals(DataTypes.DOUBLE)) {
@@ -53,6 +55,8 @@ public class ValueConverter {
         return GenericType.STRING;
       } else if (dataType.equals(DataTypes.TINYINT)) {
         return GenericType.BYTE;
+      } else if (dataType.equals(DataTypes.TIME)) {
+        return GenericType.LOCAL_TIME;
       } else if (dataType.equals(DataTypes.TIMESTAMP)) {
         return GenericType.INSTANT;
       } else if (dataType.equals(DataTypes.TIMEUUID)) {
@@ -144,6 +148,8 @@ public class ValueConverter {
       return Converters.BOOLEAN.convertJsonValue(dataType, value);
     } else if (dataType.equals(DataTypes.COUNTER)) {
       return Converters.BIGINT.convertJsonValue(dataType, value);
+    } else if (dataType.equals(DataTypes.DATE)) {
+      return Converters.DATE.convertJsonValue(dataType, value);
     } else if (dataType.equals(DataTypes.DECIMAL)) {
       return Converters.DECIMAL.convertJsonValue(dataType, value);
     } else if (dataType.equals(DataTypes.DOUBLE)) {
@@ -162,6 +168,8 @@ public class ValueConverter {
       return Converters.STRING.convertJsonValue(dataType, value);
     } else if (dataType.equals(DataTypes.TINYINT)) {
       return Converters.TINYINT.convertJsonValue(dataType, value);
+    } else if (dataType.equals(DataTypes.TIME)) {
+      return Converters.TIME.convertJsonValue(dataType, value);
     } else if (dataType.equals(DataTypes.TIMESTAMP)) {
       return Converters.TIMESTAMP.convertJsonValue(dataType, value);
     } else if (dataType.equals(DataTypes.TIMEUUID)) {

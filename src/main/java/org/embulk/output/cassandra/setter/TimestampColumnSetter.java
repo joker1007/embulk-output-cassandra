@@ -11,19 +11,18 @@ public class TimestampColumnSetter extends CassandraColumnSetter {
 
   @Override
   public void setLongValue(Long value, BoundStatementBuilder statement) {
-    statement.setInstant(cassandraColumn.getName(), Instant.ofEpochSecond(value));
+    statement.setInstant(cassandraColumn.getName(), Instant.ofEpochMilli(value));
   }
 
   @Override
   public void setDoubleValue(Double value, BoundStatementBuilder statement) {
     long longValue = value.longValue();
-    long nanoSecond = Math.round((value - longValue) * 1_000_000_000);
-    statement.setInstant(cassandraColumn.getName(), Instant.ofEpochSecond(longValue, nanoSecond));
+    statement.setInstant(cassandraColumn.getName(), Instant.ofEpochMilli(longValue));
   }
 
   @Override
   public void setStringValue(String value, BoundStatementBuilder statement) {
-    statement.setString(cassandraColumn.getName(), value);
+    statement.setInstant(cassandraColumn.getName(), Instant.parse(value));
   }
 
   @Override

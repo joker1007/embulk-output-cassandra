@@ -11,6 +11,12 @@ public class DateColumnSetter extends CassandraColumnSetter {
   }
 
   @Override
+  public void setLongValue(Long value, BoundStatementBuilder statement) {
+    LocalDate date = LocalDate.ofEpochDay(value);
+    statement.setLocalDate(cassandraColumn.getName(), date);
+  }
+
+  @Override
   public void setStringValue(String value, BoundStatementBuilder statement) {
     LocalDate date = LocalDate.parse(value);
     statement.setLocalDate(cassandraColumn.getName(), date);

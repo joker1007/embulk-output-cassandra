@@ -78,6 +78,8 @@ public class TestCassandraOutputPlugin {
     String createKeyspace = EmbulkTests.readResource(RESOURCE_PATH + "create_keyspace.cql");
     String createTableBasic =
         EmbulkTests.readResource(RESOURCE_PATH + "create_table_test_basic.cql");
+    String createTableIntegerAsTemporal =
+        EmbulkTests.readResource(RESOURCE_PATH + "create_table_test_integer_as_temporal.cql");
     String createTableUuid = EmbulkTests.readResource(RESOURCE_PATH + "create_table_test_uuid.cql");
     String createTableComplex =
         EmbulkTests.readResource(RESOURCE_PATH + "create_table_test_complex.cql");
@@ -85,10 +87,12 @@ public class TestCassandraOutputPlugin {
         EmbulkTests.readResource(RESOURCE_PATH + "create_table_test_counter.cql");
     session.execute(createKeyspace);
     session.execute(createTableBasic);
+    session.execute(createTableIntegerAsTemporal);
     session.execute(createTableUuid);
     session.execute(createTableComplex);
     session.execute(createTableCounter);
     session.execute("TRUNCATE embulk_test.test_basic");
+    session.execute("TRUNCATE embulk_test.test_integer_as_temporal");
     session.execute("TRUNCATE embulk_test.test_uuid");
     session.execute("TRUNCATE embulk_test.test_complex");
     session.execute("TRUNCATE embulk_test.test_counter");
@@ -124,19 +128,19 @@ public class TestCassandraOutputPlugin {
     assertEquals(9, row1.getLong("int_item"));
     assertEquals(1, row1.getInt("int32_item"));
     assertEquals(2, row1.getShort("smallint_item"));
-    assertTrue(row1.getBool("boolean_item"));
+    assertTrue(row1.getBoolean("boolean_item"));
     assertEquals(createInstant(2018, 7, 1, 10, 0, 0, 0), row1.getInstant("timestamp_item"));
     assertEquals("A002", row2.getString("id"));
     assertEquals(0, row2.getLong("int_item"));
     assertEquals(0, row2.getInt("int32_item"));
     assertEquals(4, row2.getShort("smallint_item"));
-    assertTrue(row2.getBool("boolean_item"));
+    assertTrue(row2.getBoolean("boolean_item"));
     assertEquals(createInstant(2018, 7, 1, 10, 0, 1, 0), row2.getInstant("timestamp_item"));
     assertEquals("A003", row3.getString("id"));
     assertEquals(9, row3.getLong("int_item"));
     assertEquals(0, row3.getInt("int32_item"));
     assertEquals(8, row3.getShort("smallint_item"));
-    assertFalse(row3.getBool("boolean_item"));
+    assertFalse(row3.getBoolean("boolean_item"));
     assertEquals(createInstant(2018, 7, 1, 10, 0, 2, 0), row3.getInstant("timestamp_item"));
 
     ConfigSource deleteConfig = loadYamlResource("test_delete.yaml");
@@ -149,6 +153,32 @@ public class TestCassandraOutputPlugin {
         result.getOutputTaskReports().get(0).get(Long.class, "inserted_record_count").longValue());
     int rowCount = session.execute("SELECT * FROM embulk_test.test_basic").all().size();
     assertEquals(0, rowCount);
+  }
+
+  @Test
+  public void testIntegerAsTemporal() throws IOException {
+    Path input = getInputPath("test4.csv");
+    ConfigSource config = loadYamlResource("test_integer_as_temporal.yaml");
+    config.set("hosts", getCassandraHostAsList());
+    config.set("port", getCassandraPort());
+
+    assertEquals(
+        0, session.execute("SELECT * FROM embulk_test.test_integer_as_temporal").all().size());
+
+    TestingEmbulk.RunResult result = embulk.runOutput(config, input);
+    assertEquals(
+        1,
+        result.getOutputTaskReports().get(0).get(Long.class, "inserted_record_count").longValue());
+
+    Row row1 =
+        session
+            .execute("SELECT * FROM embulk_test.test_integer_as_temporal WHERE id = 'A001'")
+            .one();
+    assertNotNull(row1);
+    assertEquals("A001", row1.getString("id"));
+    assertEquals(createInstant(1970, 1, 2, 0, 0, 0, 0), row1.getInstant("timestamp_item"));
+    assertEquals(LocalDate.of(1970, 1, 2), row1.getLocalDate("date_item"));
+    assertEquals(LocalTime.of(0, 10, 0), row1.getLocalTime("time_item"));
   }
 
   @Test
@@ -174,19 +204,19 @@ public class TestCassandraOutputPlugin {
     assertEquals(9, row1.getLong("int_item"));
     assertEquals(1, row1.getInt("int32_item"));
     assertEquals(2, row1.getShort("smallint_item"));
-    assertTrue(row1.getBool("boolean_item"));
+    assertTrue(row1.getBoolean("boolean_item"));
     assertEquals(createInstant(2018, 7, 1, 10, 0, 0, 0), row1.getInstant("timestamp_item"));
     assertEquals("A002", row2.getString("id"));
     assertEquals(0, row2.getLong("int_item"));
     assertEquals(0, row2.getInt("int32_item"));
     assertEquals(4, row2.getShort("smallint_item"));
-    assertTrue(row2.getBool("boolean_item"));
+    assertTrue(row2.getBoolean("boolean_item"));
     assertEquals(createInstant(2018, 7, 1, 10, 0, 1, 0), row2.getInstant("timestamp_item"));
     assertEquals("A003", row3.getString("id"));
     assertEquals(9, row3.getLong("int_item"));
     assertEquals(0, row3.getInt("int32_item"));
     assertEquals(8, row3.getShort("smallint_item"));
-    assertFalse(row3.getBool("boolean_item"));
+    assertFalse(row3.getBoolean("boolean_item"));
     assertEquals(createInstant(2018, 7, 1, 10, 0, 2, 0), row3.getInstant("timestamp_item"));
   }
 
