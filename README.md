@@ -21,31 +21,31 @@ But future embulk version may break this plugin.
 
 ## Support Data types
 
-| CQL Type                    | Embulk Type                                    | Descritpion                                                             |
-| --------                    | -----------                                    | --------------                                                          |
-| ascii                       | string, boolean, long, double, timestamp, json | use `toString` or `toJson`                                              |
-| bigint                      | string, boolean(as 0 or 1), long, double       |                                                                         |
-| blob                        | unsupported                                    |                                                                         |
-| boolean                     | boolean, long, double                          | 0 == false, 1 == true                                                   |
-| counter                     | unsupported                                    |                                                                         |
-| date                        | string, timestamp                              | timestamp use `toEpochMilli`                                            |
-| decimal                     | string, boolean(as 0 or 1), long, double       |                                                                         |
-| double                      | string, boolean(as 0 or 1), long, double       |                                                                         |
-| float                       | string, boolean(as 0 or 1), long, double       |                                                                         |
-| inet                        | string                                         |                                                                         |
-| int                         | string, boolean(as 0 or 1), long, double       | overflowed value is reset to 0                                          |
-| list                        | json                                           |                                                                         |
-| map (support only text key) | json                                           |                                                                         |
-| set                         | json                                           |                                                                         |
-| smallint                    | string, boolean(as 0 or 1), long, double       | overflowed value is reset to 0                                          |
-| text                        | string, boolean, long, double, timestamp, json | use `toString` or `toJson`                                              |
-| time                        | string, long, double, timestamp                | long and double as nano seconds of day,<br>timestamp use `toEpochMilli` |
-| timestamp                   | long, double, timestamp                        | long and double as epoch second                                         |
-| timeuuid                    | null                                           |
-| uuid                        | null                                           |
-| varchar                     | string, boolean, long, double, timestamp, json | use `toString` or `toJson`                                              |
-| varint                      | string, boolean(as 0 or 1), long, double       |                                                                         |
-| UDT                         | unsupported                                    |                                                                         |
+| CQL Type                    | Embulk Type                                    | Descritpion                                                           |
+| --------                    | -----------                                    | --------------                                                        |
+| ascii                       | string, boolean, long, double, timestamp, json | use `toString` or `toJson`                                            |
+| bigint                      | string, boolean(as 0 or 1), long, double       |                                                                       |
+| blob                        | unsupported                                    |                                                                       |
+| boolean                     | boolean, long, double                          | 0 == false, 1 == true                                                 |
+| counter                     | unsupported                                    |                                                                       |
+| date                        | string, long, timestamp                        | long as days from epoch, timestamp as UTC timestamp                   |
+| decimal                     | string, boolean(as 0 or 1), long, double       |                                                                       |
+| double                      | string, boolean(as 0 or 1), long, double       |                                                                       |
+| float                       | string, boolean(as 0 or 1), long, double       |                                                                       |
+| inet                        | string                                         |                                                                       |
+| int                         | string, boolean(as 0 or 1), long, double       | overflowed value is reset to 0                                        |
+| list                        | json                                           |                                                                       |
+| map (support only text key) | json                                           |                                                                       |
+| set                         | json                                           |                                                                       |
+| smallint                    | string, boolean(as 0 or 1), long, double       | overflowed value is reset to 0                                        |
+| text                        | string, boolean, long, double, timestamp, json | use `toString` or `toJson`                                            |
+| time                        | string, long, double, timestamp                | long and double as nano seconds of day,<br>timestamp as UTC timestamp |
+| timestamp                   | string, long, double, timestamp                | string as Java's ISO_INSTANT format, long and double as epoch millis  |
+| timeuuid                    | null                                           |                                                                       |
+| uuid                        | null                                           |                                                                       |
+| varchar                     | string, boolean, long, double, timestamp, json | use `toString` or `toJson`                                            |
+| varint                      | string, boolean(as 0 or 1), long, double       |                                                                       |
+| UDT                         | unsupported                                    |                                                                       |
 
 ## Insert Behavior
 If embulk record does not have a column, it is treated as `unset`.

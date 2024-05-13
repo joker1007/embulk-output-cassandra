@@ -13,6 +13,8 @@ public class DateConverter implements Converter {
 
     if (value.isJsonString()) {
       return LocalDate.parse(value.asJsonString().getString());
+    } else if (value.isJsonLong()) {
+      return LocalDate.ofEpochDay(value.asJsonLong().longValue());
     } else {
       throw new UnsupportedOperationException(exceptionMessage(value));
     }
